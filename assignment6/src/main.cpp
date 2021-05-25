@@ -4,7 +4,7 @@
 #include <imgui/imgui.h>
 #include <vector>
 #include <igl/unproject_onto_mesh.h>
-#include "igl/serialize.h"
+#include<string>
 
 using namespace std;
 using namespace Eigen;
@@ -26,31 +26,40 @@ struct Landmark: public igl::Serializable {
         this->Add(face_index  , "face_index");
         this->Add(bary_coords  , "bary_coords");
     }
+
+    RowVector3d get_cartesian_coordinates(const MatrixXd& V, const MatrixXi& F) {
+        RowVector3i vertex_indices = F.row(face_index);
+        RowVector3d p0 = V.row(vertex_indices(0));
+        RowVector3d p1 = V.row(vertex_indices(1));
+        RowVector3d p2 = V.row(vertex_indices(2));
+        return bary_coords(0) * p0 + bary_coords(1) * p1 + bary_coords(2) * p2;
+    }
 };
 
 vector<Landmark> landmarks;
 
-RowVector3d get_cartesian_coordinates(Eigen::Vector3d p0, Eigen::Vector3d p1, Eigen::Vector3d p2,
-                                      Eigen::Vector3f barycentric_coordinates) {
-    return barycentric_coordinates(0) * p0 + barycentric_coordinates(1) * p1 + barycentric_coordinates(2) * p2;
-}
 
-void display_landmarks() {
-    cout << "Display landmark" << endl;
 
+void display_landmarks(const vector<Landmark>& landmarks) {
+    cout << "Display landmarks" << endl;
+
+    int num_landmarks = landmarks.size();
+    MatrixXd P(num_landmarks, 3);
+    MatrixXd C(num_landmarks, 3);
+    int index = 0;
     for (Landmark landmark: landmarks) {
 
-        RowVector3i vertex_indices = F.row(landmark.face_index);
-        RowVector3d p0 = V.row(vertex_indices(0));
-        RowVector3d p1 = V.row(vertex_indices(1));
-        RowVector3d p2 = V.row(vertex_indices(2));
-        RowVector3d cartesian_point = get_cartesian_coordinates(p0, p1, p2, landmark.bary_coords);
+        RowVector3d cartesian_point = landmark.get_cartesian_coordinates(V, F);
 
-        viewer.data().add_points(cartesian_point, RowVector3d(1, 0, 0));
+        P.row(index) << cartesian_point;
+        C.row(index) << RowVector3d(1, 0, 0);
+
+        index++;
     }
+    viewer.data().set_points(P, C);
 }
 
-void add_landmark(int mouse_x, int mouse_y) {
+void add_landmark_at_mouse_position() {
 
     int fid;
     Eigen::Vector3f bc;
@@ -64,16 +73,14 @@ void add_landmark(int mouse_x, int mouse_y) {
         Eigen::RowVector3d p1 = V.row(face_point_indices(1));
         Eigen::RowVector3d p2 = V.row(face_point_indices(2));
 
-        Eigen::RowVector3d point_on_mesh;
-        point_on_mesh << get_cartesian_coordinates(p0, p1, p2, bc);
-        // Paint hit red
-        viewer.data().add_points(point_on_mesh, Eigen::RowVector3d(1, 0, 0));
-
         // Add landmark to landmarks
         Landmark new_landmark = Landmark();
         new_landmark.face_index = fid;
         new_landmark.bary_coords = Vector3f(bc(0), bc(1), bc(2));
         landmarks.push_back(new_landmark);
+
+        // Display new landmark
+        display_landmarks(landmarks);
     }
 }
 
@@ -86,15 +93,20 @@ bool callback_mouse_down(Viewer &viewer, int button, int modifier) {
         return false;
     }
 
-    add_landmark(viewer.current_mouse_x, viewer.current_mouse_y);
+    add_landmark_at_mouse_position();
 
     return true;
 }
 
 bool callback_key_down(Viewer &viewer, unsigned char key, int modifiers) {
     if (key == '1') {
-        printf("You pressed 1");
-        display_landmarks();
+        display_landmarks(landmarks);
+    }
+
+    if (key == '2') {
+        cout << "Delete last added landmark" << endl;
+        landmarks.pop_back();
+        display_landmarks(landmarks);
     }
 
     return true;
@@ -109,18 +121,22 @@ bool load_mesh(string filename) {
     return true;
 }
 
-void save_landmarks() {
-    igl::serialize(landmarks, "landmarks", "my-landmarks", true);
+void save_landmarks_to_file(vector<Landmark> landmarks, string filename) {
+    igl::serialize(landmarks, "landmarks", filename, true);
     cout << "landmarks saved to my-landmarks" << endl;
 }
 
-void load_landmarks() {
-    igl::deserialize(landmarks, "landmarks", "my-landmarks");
+vector<Landmark> get_landmarks_from_file(string filename) {
+    vector<Landmark> deserialized_landmarks;
+    igl::deserialize(deserialized_landmarks, "landmarks", filename);
+    return deserialized_landmarks;
 }
 
 int main(int argc, char *argv[]) {
     if (argc != 2) {
-        load_mesh("../data/lankmarks_example/headtemplate.obj");
+        string folder_path = "../data/aligned_faces_example/example2/";
+        string file_name = "alain_normal.obj";
+        load_mesh(folder_path + file_name);
     } else {
         load_mesh(argv[1]);
     }
@@ -140,11 +156,11 @@ int main(int argc, char *argv[]) {
             }
 
             if (ImGui::Button("Save Landmarks", ImVec2(-1, 0))) {
-                save_landmarks();
+                save_landmarks_to_file(landmarks, "my-landmarks");
             }
 
             if (ImGui::Button("Load Landmarks", ImVec2(-1, 0))) {
-                load_landmarks();
+                landmarks = get_landmarks_from_file("my-landmarks");
             }
         }
     };
