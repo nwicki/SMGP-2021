@@ -15,6 +15,7 @@ Viewer viewer;
 Eigen::MatrixXd V(0,3);
 //face array, #F x3
 Eigen::MatrixXi F(0,3);
+bool is_selection_enabled = false;
 
 
 RowVector3d get_cartesian_coordinates(Eigen::Vector3d p0, Eigen::Vector3d p1, Eigen::Vector3d p2, Eigen::Vector3f barycentric_coordinates) {
@@ -48,6 +49,10 @@ bool callback_mouse_down(Viewer& viewer, int button, int modifier)
 {
     if (button == (int) Viewer::MouseButton::Right)
         return false;
+
+    if (!is_selection_enabled) {
+        return false;
+    }
 
     add_vertex(viewer.current_mouse_x, viewer.current_mouse_y);
 
@@ -88,6 +93,10 @@ int main(int argc, char *argv[]) {
 
     // Add new group
     if (ImGui::CollapsingHeader("Instructions", ImGuiTreeNodeFlags_DefaultOpen)) {
+
+        if (ImGui::Checkbox("Enable Selection", &is_selection_enabled)) {
+            cout << "Enable Selection = " << is_selection_enabled << endl;
+        }
 
       if (ImGui::Button("Save Landmarks", ImVec2(-1,0))) {
         printf("not implemented yet");
