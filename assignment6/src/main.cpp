@@ -12,15 +12,134 @@ using Viewer = igl::opengl::glfw::Viewer;
 
 Viewer viewer;
 
-//vertex array, #V x3
+// Vertex array, #V x3
 Eigen::MatrixXd V(0, 3);
-//face array, #F x3
+// Face array, #F x3
 Eigen::MatrixXi F(0, 3);
+
+// Landmark Selection
 bool is_selection_enabled = false;
 LandmarkSelector landmarkSelector = LandmarkSelector();
-string folder_path = "../data/aligned_faces_example/example2/";
-string filename = "alain_normal";
+
+// Mesh Loading
+string folder_path = "../data/face_template/";
+string filename = "headtemplate";
 string file_extension = ".obj";
+
+const string filenames[] = {
+        "alain_normal",
+        "michi-smile",
+        "moyuan_duckface",
+        "alain_smile",
+        "moyuan_neutral",
+        "nici-brille",
+        "alex neutral",
+        "nici-neutral",
+        "nici-smile",
+        "alex smile",
+        "nick neutral",
+        "alex wacky",
+        "nick smile",
+        "ali_neutral_corrected",
+        "nick wacky",
+        "ali_smile_corrected",
+        "nihat neutral",
+        "arda_neutral_corrected",
+        "nihat smile",
+        "arda_smile_corrected",
+        "nihat wacky",
+        "bjarni_neutral",
+        "patrick_neutral_corrected",
+        "bjarni_smile",
+        "patrick_smile_corrected",
+        "chrisk_neutral",
+        "person1_normal",
+        "chrisk_neutral2",
+        "person1_smile ",
+        "chrisk_smile",
+        "person2_normal ",
+        "chriss_glasses",
+        "person2_smile ",
+        "chriss_neutral",
+        "person3_normal",
+        "chriss_smile",
+        "person3_smile",
+        "christian_neutral_corrected",
+        "person4_normal",
+        "christian_smile_corrected",
+        "person4_smile",
+        "daniel_normal",
+        "person5_normal",
+        "daniel_smile",
+        "person5_smile",
+        "dingguang_normal",
+        "person6_normal",
+        "dingguang_smile",
+        "person6_smile",
+        "fabian-brille",
+        "pietro_normal",
+        "fabian-neutral",
+        "pietro_smile",
+        "fabian-smile",
+        "qais_neutral_corrected",
+        "felix neutral smoothed",
+        "qais_smile_corrected",
+        "felix smile smoothed",
+        "ryan neutral smoothed",
+        "felix wacky smoothed",
+        "ryan smiloe smoothed",
+        "gleb_neutral",
+        "selina-brille",
+        "gleb_smile",
+        "selina-neutral",
+        "ho_neutral",
+        "selina-smile",
+        "ho_smile",
+        "shanshan_neutral_corrected",
+        "jan-brille",
+        "shanshan_smile_corrected",
+        "jan-neutral",
+        "simon-brille",
+        "jan-smile",
+        "simon-neutral",
+        "julian_normal",
+        "simon-smile",
+        "julian_smile",
+        "simonh_neutral_corrected",
+        "karlis_neutral_corrected",
+        "simonh_smile_corrected",
+        "karlis_smile_corrected",
+        "simonw_neutral_corrected",
+        "krispin_normal",
+        "simonw_smile_corrected",
+        "krispin_smile",
+        "stewart neutral smoothed",
+        "lea_neutral",
+        "stewart smile smoothed",
+        "lea_smile",
+        "till_neutral",
+        "livio-neutral",
+        "till_smile",
+        "livio-smile",
+        "ulla neutral smoothed",
+        "mark neutral snoothed",
+        "ulla smile smoothed",
+        "mark smile smoothed",
+        "ulla wacky smoothed",
+        "mark wacky smoothed",
+        "virginia-brille",
+        "markus_normal",
+        "virginia-neutral",
+        "markus_smile",
+        "virginia-smile",
+        "michael_normal",
+        "zsombor-brille",
+        "michael_smile",
+        "zsombor-neutral",
+        "michi-brille",
+        "zsombor-smile",
+        "michi-neutral"
+};
 
 bool callback_mouse_down(Viewer &viewer, int button, int modifier) {
 
@@ -37,6 +156,10 @@ bool callback_mouse_down(Viewer &viewer, int button, int modifier) {
 }
 
 bool callback_key_down(Viewer &viewer, unsigned char key, int modifiers) {
+
+    if(key == '1') {
+        // is_selection_enabled = !is_selection_enabled;
+    }
     return true;
 }
 
@@ -46,15 +169,13 @@ bool load_mesh(string filename) {
     viewer.data().set_mesh(V, F);
 
     viewer.core.align_camera_center(V);
+    cout << "Loaded file: " << filename << endl;
     return true;
 }
 
 int main(int argc, char *argv[]) {
-    if (argc != 2) {
-        load_mesh(folder_path + filename + file_extension);
-    } else {
-        load_mesh(argv[1]);
-    }
+    string file_path = folder_path + filename + file_extension;
+    load_mesh(file_path);
 
     igl::opengl::glfw::imgui::ImGuiMenu menu;
     viewer.plugins.push_back(&menu);
@@ -97,6 +218,11 @@ int main(int argc, char *argv[]) {
             if (ImGui::Button("Clear Landmarks From Viewer", ImVec2(-1, 0))) {
                 landmarkSelector.clear_landmarks_from_viewer(viewer);
                 cout << "Clear landmarks from viewer" << endl;
+            }
+
+            if (ImGui::Button("Delete All Landmarks", ImVec2(-1, 0))) {
+                landmarkSelector.delete_all_landmarks();
+                cout << "Delete All Landmarks" << endl;
             }
         }
     };
