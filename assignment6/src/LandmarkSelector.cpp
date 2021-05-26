@@ -83,6 +83,10 @@ public:
         }
     }
 
+    void delete_all_landmarks() {
+        current_landmarks = {};
+    }
+
     void save_landmarks_to_file(vector<Landmark> landmarks, string filename) {
         igl::serialize(landmarks, "landmarks", filename, true);
     }
