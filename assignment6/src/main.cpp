@@ -3,8 +3,8 @@
 #include <igl/opengl/glfw/imgui/ImGuiMenu.h>
 #include <imgui/imgui.h>
 #include <vector>
-#include <igl/unproject_onto_mesh.h>
 #include<string>
+#include "LandmarkSelector.cpp"
 
 using namespace std;
 using namespace Eigen;
@@ -17,72 +17,10 @@ Eigen::MatrixXd V(0, 3);
 //face array, #F x3
 Eigen::MatrixXi F(0, 3);
 bool is_selection_enabled = false;
-
-struct Landmark: public igl::Serializable {
-    int face_index;
-    Vector3f bary_coords;
-
-    void InitSerialization(){
-        this->Add(face_index  , "face_index");
-        this->Add(bary_coords  , "bary_coords");
-    }
-
-    RowVector3d get_cartesian_coordinates(const MatrixXd& V, const MatrixXi& F) {
-        RowVector3i vertex_indices = F.row(face_index);
-        RowVector3d p0 = V.row(vertex_indices(0));
-        RowVector3d p1 = V.row(vertex_indices(1));
-        RowVector3d p2 = V.row(vertex_indices(2));
-        return bary_coords(0) * p0 + bary_coords(1) * p1 + bary_coords(2) * p2;
-    }
-};
-
-vector<Landmark> landmarks;
-
-
-
-void display_landmarks(const vector<Landmark>& landmarks) {
-    cout << "Display landmarks" << endl;
-
-    int num_landmarks = landmarks.size();
-    MatrixXd P(num_landmarks, 3);
-    MatrixXd C(num_landmarks, 3);
-    int index = 0;
-    for (Landmark landmark: landmarks) {
-
-        RowVector3d cartesian_point = landmark.get_cartesian_coordinates(V, F);
-
-        P.row(index) << cartesian_point;
-        C.row(index) << RowVector3d(1, 0, 0);
-
-        index++;
-    }
-    viewer.data().set_points(P, C);
-}
-
-void add_landmark_at_mouse_position() {
-
-    int fid;
-    Eigen::Vector3f bc;
-    // Cast a ray in the view direction starting from the mouse position
-    double x = viewer.current_mouse_x;
-    double y = viewer.core.viewport(3) - viewer.current_mouse_y;
-    if (igl::unproject_onto_mesh(Eigen::Vector2f(x, y), viewer.core.view, viewer.core.proj, viewer.core.viewport, V, F,
-                                 fid, bc)) {
-        Eigen::RowVector3i face_point_indices = F.row(fid);
-        Eigen::RowVector3d p0 = V.row(face_point_indices(0));
-        Eigen::RowVector3d p1 = V.row(face_point_indices(1));
-        Eigen::RowVector3d p2 = V.row(face_point_indices(2));
-
-        // Add landmark to landmarks
-        Landmark new_landmark = Landmark();
-        new_landmark.face_index = fid;
-        new_landmark.bary_coords = Vector3f(bc(0), bc(1), bc(2));
-        landmarks.push_back(new_landmark);
-
-        // Display new landmark
-        display_landmarks(landmarks);
-    }
-}
+LandmarkSelector landmarkSelector = LandmarkSelector();
+string folder_path = "../data/aligned_faces_example/example2/";
+string filename = "alain_normal";
+string file_extension = ".obj";
 
 bool callback_mouse_down(Viewer &viewer, int button, int modifier) {
 
@@ -93,22 +31,12 @@ bool callback_mouse_down(Viewer &viewer, int button, int modifier) {
         return false;
     }
 
-    add_landmark_at_mouse_position();
+    landmarkSelector.add_landmark_at_mouse_position(V, F, viewer);
 
     return true;
 }
 
 bool callback_key_down(Viewer &viewer, unsigned char key, int modifiers) {
-    if (key == '1') {
-        display_landmarks(landmarks);
-    }
-
-    if (key == '2') {
-        cout << "Delete last added landmark" << endl;
-        landmarks.pop_back();
-        display_landmarks(landmarks);
-    }
-
     return true;
 }
 
@@ -121,22 +49,9 @@ bool load_mesh(string filename) {
     return true;
 }
 
-void save_landmarks_to_file(vector<Landmark> landmarks, string filename) {
-    igl::serialize(landmarks, "landmarks", filename, true);
-    cout << "landmarks saved to my-landmarks" << endl;
-}
-
-vector<Landmark> get_landmarks_from_file(string filename) {
-    vector<Landmark> deserialized_landmarks;
-    igl::deserialize(deserialized_landmarks, "landmarks", filename);
-    return deserialized_landmarks;
-}
-
 int main(int argc, char *argv[]) {
     if (argc != 2) {
-        string folder_path = "../data/aligned_faces_example/example2/";
-        string file_name = "alain_normal.obj";
-        load_mesh(folder_path + file_name);
+        load_mesh(folder_path + filename + file_extension);
     } else {
         load_mesh(argv[1]);
     }
@@ -149,18 +64,39 @@ int main(int argc, char *argv[]) {
         menu.draw_viewer_menu();
 
         // Add new group
-        if (ImGui::CollapsingHeader("Instructions", ImGuiTreeNodeFlags_DefaultOpen)) {
+        if (ImGui::CollapsingHeader("Landmark Selection", ImGuiTreeNodeFlags_DefaultOpen)) {
 
             if (ImGui::Checkbox("Enable Selection", &is_selection_enabled)) {
-                cout << "Enable Selection = " << is_selection_enabled << endl;
+                string message = (is_selection_enabled) ? "Selection Enabled" : "Selection Disabled";
+                cout << message << endl;
             }
 
             if (ImGui::Button("Save Landmarks", ImVec2(-1, 0))) {
-                save_landmarks_to_file(landmarks, "my-landmarks");
+                string file_path = folder_path + filename + "_landmarks";
+                landmarkSelector.save_landmarks_to_file(landmarkSelector.current_landmarks, file_path);
+                cout << landmarkSelector.current_landmarks.size() << " landmarks saved to " << file_path << endl;
+            }
+
+            if (ImGui::Button("Delete last landmark", ImVec2(-1, 0))) {
+                cout << "Delete last added landmark" << endl;
+                landmarkSelector.delete_last_landmark();
+                landmarkSelector.display_landmarks(landmarkSelector.current_landmarks, V, F, viewer);
             }
 
             if (ImGui::Button("Load Landmarks", ImVec2(-1, 0))) {
-                landmarks = get_landmarks_from_file("my-landmarks");
+                string file_path = folder_path + filename + "_landmarks";
+                landmarkSelector.current_landmarks = landmarkSelector.get_landmarks_from_file(file_path);
+                cout << landmarkSelector.current_landmarks.size() << " landmarks loaded from " << file_path << endl;
+            }
+
+            if (ImGui::Button("Display Landmarks", ImVec2(-1, 0))) {
+                landmarkSelector.display_landmarks(landmarkSelector.current_landmarks, V, F, viewer);
+                cout << "Display landmarks" << endl;
+            }
+
+            if (ImGui::Button("Clear Landmarks From Viewer", ImVec2(-1, 0))) {
+                landmarkSelector.clear_landmarks_from_viewer(viewer);
+                cout << "Clear landmarks from viewer" << endl;
             }
         }
     };

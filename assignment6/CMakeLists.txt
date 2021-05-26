@@ -12,5 +12,5 @@ find_package(LIBIGL REQUIRED QUIET)
 
 # Add your project files
 FILE(GLOB SRCFILES src/*.cpp)
-add_executable(${PROJECT_NAME} ${SRCFILES})
+add_executable(${PROJECT_NAME} ${SRCFILES} src/LandmarkSelector.cpp)
 target_link_libraries(${PROJECT_NAME} igl::core igl::opengl_glfw igl::opengl_glfw_imgui)
