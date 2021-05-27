@@ -26,6 +26,7 @@ Eigen::MatrixXi F;
 // List of faces already preprocessed for PCA
 set<string> _faceFiles;
 vector<MatrixXd> _faceList;
+vector<VectorXd> _faceListDeviation;
 vector<MatrixXd> _faceOffsets;
 MatrixXd _PCA_A;
 MatrixXd _PCA_Covariance;
@@ -52,6 +53,39 @@ void storeEigenFaces();
 void loadEigenFaces();
 void computeMeanFace();
 void initializeParameters();
+void convert3Dto1D(MatrixXd& m);
+void computeDeviation();
+
+void convert3Dto1D(MatrixXd& m) {
+    if(m.cols() != 3) {
+        cout << "Cannot convert non 3-dimensional matrices" << endl;
+        exit(1);
+    }
+    MatrixXd test = m;
+    m.resize(m.cols() * m.rows(), 1);
+    for(int i = 0; i < test.cols(); i++) {
+        if(!(test.col(i) - m.block(i * test.rows(),0,test.rows(),1)).isZero(1e-6)) {
+            cout << "3D to 1D conversion failed" << endl;
+            exit(1);
+        }
+    }
+}
+
+void computeDeviation() {
+    if(_faceList.empty()) {
+        cout << "No faces loaded" << endl;
+        return;
+    }
+    cout << "Compute deviation to mean face for each face" << endl;
+    computeMeanFace();
+    _faceListDeviation = vector<VectorXd>(_faceList.size());
+    for(int i = 0; i < _faceList.size(); i++) {
+        MatrixXd diff = _faceList[i] - _meanFace;
+        convert3Dto1D(diff);
+        _faceListDeviation[i] = diff;
+    }
+    cout << endl;
+}
 
 void initializeParameters() {
     _currentData = _dataExample1;
@@ -110,24 +144,26 @@ void computePCA() {
 
     _PCA_A.resize(nVertices, _faceList.size());
     computeMeanFace();
+    computeDeviation();
     // Add each face in the list as a vector to the PCA matrix
     for(int i = 0; i < _faceList.size(); i++){
-        MatrixXd vertices = _faceList[0];
-        // Center vertices
-        vertices -= _meanFace;
-        // Squish 3D into 1D
-        VectorXd verticesV(vertices.rows() * vertices.cols());
-        verticesV << vertices.col(0), vertices.col(1), vertices.col(2);
-        _PCA_A.col(i) = verticesV;
+        _PCA_A.col(i) = _faceListDeviation[i];
     }
 
     // Compute selfadjoint covariance matrix for more stable eigen decomposition:
     // https://eigen.tuxfamily.org/dox/classEigen_1_1SelfAdjointEigenSolver.html
-    _PCA_Covariance = _PCA_A * _PCA_A.adjoint();
+    _PCA_Covariance = _PCA_A.adjoint() * _PCA_A * (1.0 / _PCA_A.rows());
     // Compute selfadjoint eigendecomposition
     SelfAdjointEigenSolver<MatrixXd> eigenDecomposition(_PCA_Covariance);
-    // Save transformations for user interaction
-    _eigenFaces = eigenDecomposition.eigenvectors().block(0,0,_PCA_Covariance.rows(),_maxEigenFaces);
+    // Get Eigen vectors
+    MatrixXd eigenVectors = eigenDecomposition.eigenvectors();
+    // Compute dominant Eigen faces using the approach described in https://www.face-rec.org/algorithms/PCA/jcn.pdf - page 5
+    _eigenFaces.resize(_PCA_A.rows(),eigenVectors.cols());
+    for(int i = 0; i < eigenVectors.cols(); i++) {
+        for(int j = 0; j < eigenVectors.rows(); j++) {
+            _eigenFaces.col(i) += eigenVectors(i,j) * _PCA_A.col(j);
+        }
+    }
     // Result runtime
     auto end = chrono::high_resolution_clock::now();
     cout << "PCA execution time: " << chrono::duration_cast<chrono::milliseconds> (end-start).count() << " ms" << endl;
@@ -189,12 +225,10 @@ void computeEigenFaceWeights() {
     cout << "Compute weights for each face and corresponding Eigenfaces" << endl;
     _weightEigenFacesPerFace = vector<vector<float>>(_faceList.size());
     for(int i = 0; i < _faceList.size(); i++) {
-        MatrixXd noMean = _faceList[i] - _meanFace;
-        VectorXd noMeanV(noMean.cols() * noMean.rows());
-        noMeanV << noMean.col(0), noMean.col(1), noMean.col(2);
         _weightEigenFacesPerFace[i] = vector<float>(_maxEigenFaces);
+        VectorXd deviation = _faceListDeviation[i];
         for(int j = 0; j < _maxEigenFaces; j++) {
-            _weightEigenFacesPerFace[i][j] = noMeanV.dot(_eigenFaces.col(j));
+            _weightEigenFacesPerFace[i][j] = deviation.dot(_eigenFaces.col(j));
         }
     }
     cout << endl;
@@ -324,7 +358,7 @@ int main(int argc, char *argv[]) {
 
         if (ImGui::Button("Show average face", ImVec2(-1,0))) {
             if(_meanFace.rows() == 0) {
-                if(_faceList.size() == 0) {
+                if(_faceList.empty()) {
                     cout << "No faces loaded" << endl;
                 }
                 else {
