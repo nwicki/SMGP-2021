@@ -30,15 +30,17 @@ MatrixXd _PCA_A;
 MatrixXd _PCA_Covariance;
 MatrixXd _meanFace;
 MatrixXd _eigenFaces;
-int _nEigenFaces = 7;
+int _nEigenFaces = 10;
 string _currentData;
 int _showFaceIndex;
+vector<float> _weightEigenFaces;
 
 // Constant variables
 const string _dataExample1 = "../data/aligned_faces_example/example1/";
 const string _dataExample2 = "../data/aligned_faces_example/example2/";
 const string _dataExample3 = "../data/aligned_faces_example/example3/";
 const string _fileEigenFaces = "eigenfaces.txt";
+const int _maxEigenFaces = 20;
 
 // Check variables
 
@@ -47,12 +49,20 @@ void loadFaces();
 void storeEigenFaces();
 void loadEigenFaces();
 void computeMeanFace();
+void initializeParameters();
+
+void initializeParameters() {
+    _currentData = _dataExample1;
+    _weightEigenFaces = vector<float>(_nEigenFaces);
+}
 
 bool endsWith(const string& str, const string& suffix) {
     return str.size() >= suffix.size() && 0 == str.compare(str.size()-suffix.size(), suffix.size(), suffix);
 }
 
 void loadFaces() {
+    cout << "Load faces from " << _currentData << endl;
+    _faceFiles = set<string>();
     DIR *directory;
     struct dirent *entry;
     if ((directory = opendir(_currentData.c_str())) != NULL) {
@@ -73,17 +83,24 @@ void loadFaces() {
     // Store faces in a list
     MatrixXd vertices;
     MatrixXi faces;
-    _faceList = vector<MatrixXd>();
+    _faceList = vector<MatrixXd>(_faceFiles.size());
+    int i = 0;
     for(auto it = _faceFiles.begin(); it != _faceFiles.end(); it++){
         string file = _dataExample1 + *it;
         cout << "Read file: " << file << "\n";
         igl::read_triangle_mesh(file,vertices,faces);
-        _faceList.push_back(vertices);
+        _faceList[i++] = vertices;
     }
     F = faces;
+    cout << endl;
 }
 
 void computePCA() {
+    if(_faceList.empty()) {
+        cout << "No faces loaded" << endl;
+        return;
+    }
+    cout << "Compute PCA of faces in " << _currentData << endl;
     // Initialize PCA's A matrix
     int nVertices = _faceList[0].cols() * _faceList[0].rows();
 
@@ -92,14 +109,12 @@ void computePCA() {
     // Add each face in the list as a vector to the PCA matrix
     for(int i = 0; i < _faceList.size(); i++){
         MatrixXd vertices = _faceList[0];
+        // Center vertices
         vertices -= _meanFace;
         // Squish 3D into 1D
         vertices.resize(nVertices, 1);
         _PCA_A.col(i) = vertices;
     }
-    // Center all vertices in _PCA_A
-//    RowVectorXd mean = _PCA_A.colwise().mean();
-//    _PCA_A = _PCA_A.rowwise() - mean;
 
     // Compute selfadjoint covariance matrix for more stable eigen decomposition:
     // https://eigen.tuxfamily.org/dox/classEigen_1_1SelfAdjointEigenSolver.html
@@ -110,14 +125,15 @@ void computePCA() {
     _eigenFaces = eigenDecomposition.eigenvectors();
     // Save computed eigen faces for later usage
     storeEigenFaces();
+    cout << endl;
 }
 
 void storeEigenFaces() {
     string filePath = _currentData + _fileEigenFaces;
-    cout << "Storing eigen faces in: " << filePath << endl;
+    cout << "Storing " << _maxEigenFaces << " eigen faces in: " << filePath << endl;
     ofstream file(_currentData + _fileEigenFaces);
-    for(int i = 0; i < _eigenFaces.rows(); i++) {
-        file << _eigenFaces.row(i) << endl;
+    for(int i = 0; i < _maxEigenFaces; i++) {
+        file << _eigenFaces.col(i) << endl;
     }
     file.close();
     cout << endl;
@@ -125,7 +141,7 @@ void storeEigenFaces() {
 
 void loadEigenFaces() {
     string filePath = _currentData + _fileEigenFaces;
-    cout << "Loading eigen faces from: " << filePath << endl;
+    cout << "Loading " << _maxEigenFaces << " eigen faces from: " << filePath << endl;
     ifstream file(filePath);
     vector<vector<double>> eigenFaces;
     double a;
@@ -137,9 +153,9 @@ void loadEigenFaces() {
             eigenFaces.back().push_back(a);
         }
     }
-    _eigenFaces.resize(eigenFaces.size(), eigenFaces[0].size());
-    for(int i = 0; i < _eigenFaces.rows(); i++) {
-        _eigenFaces.row(i) = RowVectorXd::Map(eigenFaces[i].data(), eigenFaces[i].size());
+    _eigenFaces.resize(eigenFaces[0].size(), eigenFaces.size());
+    for(int i = 0; i < _eigenFaces.cols(); i++) {
+        _eigenFaces.col(i) = VectorXd::Map(eigenFaces[i].data(), eigenFaces[i].size());
     }
     cout << endl;
 }
@@ -150,6 +166,10 @@ void computeMeanFace() {
         sum += _faceList[i];
     }
     _meanFace = sum / _faceList.size();
+}
+
+void computeEigenFaceWeights() {
+
 }
 
 int pickVertex(int mouse_x, int mouse_y) {
@@ -206,7 +226,7 @@ int main(int argc, char *argv[]) {
         load_mesh(argv[1]);
     }
 
-    _currentData = _dataExample1;
+    initializeParameters();
 
     igl::opengl::glfw::imgui::ImGuiMenu menu;
     viewer.plugins.push_back(&menu);
@@ -221,53 +241,61 @@ int main(int argc, char *argv[]) {
             if (ImGui::Button("Save Landmarks", ImVec2(-1,0))) {
                 printf("not implemented yet");
             }
-            if (ImGui::Button("Load faces", ImVec2(-1,0))) {
-                loadFaces();
-            }
-            if (ImGui::Button("Compute PCA (release mode only)", ImVec2(-1,0))) {
-                computePCA();
-            }
-
-            if (ImGui::Button("Load Eigen faces", ImVec2(-1,0))) {
-                loadEigenFaces();
-            }
-
-            if (ImGui::Button("Show average face", ImVec2(-1,0))) {
-                if(_meanFace.rows() == 0) {
-                    if(_faceList.size() == 0) {
-                        cout << "No faces loaded" << endl;
-                        return;
-                    }
-                    else {
-                        computeMeanFace();
-                    }
-                }
-                viewer.data().clear();
-                viewer.data().set_mesh(_meanFace, F);
-            }
-
-            if (ImGui::InputInt("Show face", &_showFaceIndex)) {
-                if(_faceList.size() == 0) {
-                    cout << "No faces loaded" << endl;
-                    return;
-                }
-                if(_showFaceIndex < 0 || _faceList.size() <= _showFaceIndex) {
-                    cout << "Face index out of bound" << endl;
-                    return;
-                }
-                viewer.data().clear();
-                viewer.data().set_mesh(_faceList[_showFaceIndex], F);
-            }
         }
     };
 
-  viewer.callback_key_down = callback_key_down;
+    menu.callback_draw_custom_window = [&]() {
+        ImGui::SetNextWindowPos(ImVec2(180.f * menu.menu_scaling(), 0), ImGuiCond_FirstUseEver);
+        ImGui::Begin("PCA Menu", NULL, ImGuiWindowFlags_AlwaysAutoResize);
+        if (ImGui::Button("Load faces", ImVec2(-1,0))) {
+            loadFaces();
+        }
+        if (ImGui::Button("Compute PCA (release mode only)", ImVec2(-1,0))) {
+            computePCA();
+        }
 
+        if (ImGui::Button("Load Eigen faces", ImVec2(-1,0))) {
+            loadEigenFaces();
+        }
 
-  viewer.data().point_size = 10;
-  viewer.core.set_rotation_type(igl::opengl::ViewerCore::ROTATION_TYPE_TRACKBALL);
-  viewer.launch();
+        if (ImGui::Button("Show average face", ImVec2(-1,0))) {
+            if(_meanFace.rows() == 0) {
+                if(_faceList.size() == 0) {
+                    cout << "No faces loaded" << endl;
+                }
+                else {
+                    computeMeanFace();
+                    viewer.data().clear();
+                    viewer.data().set_mesh(_meanFace, F);
+                }
+            }
+        }
 
-  return 0;
+        if (ImGui::InputInt("Show face", &_showFaceIndex)) {
+            if(_faceList.size() == 0) {
+                cout << "No faces loaded" << endl;
+            }
+            else {
+                if(_showFaceIndex < 0 || _faceList.size() <= _showFaceIndex) {
+                    cout << "Face index out of bound" << endl;
+                }
+                else {
+                    viewer.data().clear();
+                    viewer.data().set_mesh(_faceList[_showFaceIndex], F);
+                }
+            }
+        }
+        for(int i = 0; i < _nEigenFaces; i++) {
+            ImGui::SliderFloat(("Eigenface " + to_string(i)).c_str(), &_weightEigenFaces[i],-1000.0,1000.0);
+        }
+        ImGui::End();
+    };
+
+    viewer.callback_key_down = callback_key_down;
+    viewer.data().point_size = 10;
+    viewer.core.set_rotation_type(igl::opengl::ViewerCore::ROTATION_TYPE_TRACKBALL);
+    viewer.launch();
+
+    return 0;
 
 }
