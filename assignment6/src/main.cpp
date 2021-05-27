@@ -27,16 +27,26 @@ Eigen::MatrixXi F;
 set<string> _faceFiles;
 vector<MatrixXd> _faceList;
 vector<VectorXd> _faceListDeviation;
+
 vector<MatrixXd> _faceOffsets;
+// cov = A * A^T
 MatrixXd _PCA_A;
+// Covariance matrix for Eigen decomposition
 MatrixXd _PCA_Covariance;
+// Average face
 MatrixXd _meanFace;
+// Eigen faces #3*vertices x #faces
 MatrixXd _eigenFaces;
+// Amount of Eigen faces considered
 int _nEigenFaces = 10;
+// Data folder
 string _currentData;
+// Face index chosen by user
 int _faceIndex;
-vector<float> _weightEigenFaces;
-vector<vector<float>> _weightEigenFacesPerFace;
+// Weights of the face displayed
+VectorXf _weightEigenFaces;
+// Columns hold weight per Eigen face #Eigen faces x #faces
+MatrixXd _weightEigenFacesPerFace;
 
 // Constant variables
 const string _dataExample1 = "../data/aligned_faces_example/example1/";
@@ -108,7 +118,8 @@ void computeDeviation() {
 
 void initializeParameters() {
     _currentData = _dataExample1;
-    _weightEigenFaces = vector<float>(_nEigenFaces);
+    _weightEigenFaces.resize(_nEigenFaces);
+    _weightEigenFaces.setZero();
 }
 
 bool endsWith(const string& str, const string& suffix) {
@@ -183,6 +194,7 @@ void computePCA() {
             decreasing.col(i) += eigenVectors.col(i)(j) * _faceListDeviation[j];
         }
     }
+    decreasing.colwise().normalize();
     // Order Eigen faces in decreasing order
     _eigenFaces.resize(decreasing.rows(),_maxEigenFaces);
     for(int i = 0; i < _maxEigenFaces; i++) {
@@ -246,12 +258,12 @@ void computeEigenFaceWeights() {
         return;
     }
     computeMeanFace();
+    computeDeviation();
     cout << "Compute weights for each face and corresponding Eigenfaces" << endl;
-    _weightEigenFacesPerFace = vector<vector<float>>(_faceList.size());
+    _weightEigenFacesPerFace.resize(_nEigenFaces,_faceList.size());
     for(int i = 0; i < _faceList.size(); i++) {
-        _weightEigenFacesPerFace[i] = vector<float>(_nEigenFaces);
         for(int j = 0; j < _nEigenFaces; j++) {
-            _weightEigenFacesPerFace[i][j] = _faceListDeviation[i].dot(_eigenFaces.col(j));
+            _weightEigenFacesPerFace(j,i) = _PCA_A.col(i).dot(_eigenFaces.col(j));
         }
     }
     cout << endl;
@@ -264,13 +276,14 @@ void computeEigenFaceOffsets() {
     cout << "Compute eigen face offsets" << endl;
     _faceOffsets = vector<MatrixXd>(_faceList.size());
     for(int i = 0; i < _faceList.size(); i++) {
-         MatrixXd sum(_faceList[i].rows(),_faceList[i].cols());
+        MatrixXd sum(_faceList[i].rows(),_faceList[i].cols());
+        sum.setZero();
         for(int j = 0; j < _nEigenFaces; j++) {
-            MatrixXd weighted = _weightEigenFacesPerFace[i][j] * _eigenFaces.col(j);
+            MatrixXd weighted = _weightEigenFacesPerFace(j,i) * _eigenFaces.col(j);
             convert1Dto3D(weighted);
             sum += weighted;
         }
-        _faceOffsets[i] = sum / (double) _nEigenFaces;
+        _faceOffsets[i] = sum;
     }
     cout << endl;
 }
@@ -400,16 +413,19 @@ int main(int argc, char *argv[]) {
         }
 
         if (ImGui::Button("Set face weights", ImVec2(-1,0))) {
-            if(_weightEigenFacesPerFace.empty()) {
+            if(_weightEigenFacesPerFace.rows() == 0) {
                 cout << "No weights computed" << endl;
             }
             else {
-                _weightEigenFaces = _weightEigenFacesPerFace[_faceIndex];
+                _weightEigenFaces.resize(_nEigenFaces);
+                for(int i = 0; i < _nEigenFaces; i++) {
+                    _weightEigenFaces(i) = _weightEigenFacesPerFace(_faceIndex,i);
+                }
             }
         }
 
         for(int i = 0; i < _nEigenFaces; i++) {
-            ImGui::SliderFloat(("Eigen face " + to_string(i)).c_str(), &_weightEigenFaces[i],-20.0,20.0);
+            ImGui::SliderFloat(("Eigen face " + to_string(i)).c_str(), &_weightEigenFaces(i),-20.0,20.0);
         }
 
         if (ImGui::Button("Compute Eigen face offset", ImVec2(-1,0))) {
