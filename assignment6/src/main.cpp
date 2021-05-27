@@ -71,6 +71,25 @@ void convert3Dto1D(MatrixXd& m) {
     }
 }
 
+void convert1Dto3D(MatrixXd& m) {
+    if(m.cols() != 1) {
+        cout << "Cannot convert non 1-dimensional matrices" << endl;
+        exit(1);
+    }
+    MatrixXd test = m;
+    m.resize(m.rows() / 3, 3);
+    for(int i = 0; i < m.cols(); i++) {
+        if(!(m.col(i) - test.block(i * m.rows(),0,m.rows(),1)).isZero(1e-10)) {
+            cout << "1D to 3D conversion failed" << endl;
+            cout << "m.rows(): " << m.rows() << endl;
+            cout << "test.block(i * m.rows(),0,m.rows(),1).rows(): " << test.block(i * m.rows(),0,m.rows(),1).rows() << endl;
+            cout << "Column " << i << " of m: " << m.col(i).transpose() << endl;
+            cout << "Segment " << i << " of test: " << test.block(i * m.rows(),0,m.rows(),1).col(0).transpose() << endl;
+            exit(1);
+        }
+    }
+}
+
 void computeDeviation() {
     if(_faceList.empty()) {
         cout << "No faces loaded" << endl;
@@ -152,7 +171,7 @@ void computePCA() {
 
     // Compute selfadjoint covariance matrix for more stable eigen decomposition:
     // https://eigen.tuxfamily.org/dox/classEigen_1_1SelfAdjointEigenSolver.html
-    _PCA_Covariance = _PCA_A.adjoint() * _PCA_A * (1.0 / _PCA_A.rows());
+    _PCA_Covariance = _PCA_A.adjoint() * _PCA_A * (1.0 / _PCA_A.cols());
     // Compute selfadjoint eigendecomposition
     SelfAdjointEigenSolver<MatrixXd> eigenDecomposition(_PCA_Covariance);
     // Get Eigen vectors
@@ -161,9 +180,10 @@ void computePCA() {
     _eigenFaces.resize(_PCA_A.rows(),eigenVectors.cols());
     for(int i = 0; i < eigenVectors.cols(); i++) {
         for(int j = 0; j < eigenVectors.rows(); j++) {
-            _eigenFaces.col(i) += eigenVectors(i,j) * _PCA_A.col(j);
+            _eigenFaces.col(i) += eigenVectors.col(i)(j) * _faceListDeviation[j];
         }
     }
+    cout << _eigenFaces.col(0).transpose() << endl;
     // Result runtime
     auto end = chrono::high_resolution_clock::now();
     cout << "PCA execution time: " << chrono::duration_cast<chrono::milliseconds> (end-start).count() << " ms" << endl;
@@ -213,7 +233,7 @@ void computeMeanFace() {
 }
 
 void computeEigenFaceWeights() {
-    if(_eigenFaces.size() < _maxEigenFaces) {
+    if(_eigenFaces.size() < _nEigenFaces) {
         cout << "Not enough eigen faces available" << endl;
         return;
     }
@@ -225,10 +245,12 @@ void computeEigenFaceWeights() {
     cout << "Compute weights for each face and corresponding Eigenfaces" << endl;
     _weightEigenFacesPerFace = vector<vector<float>>(_faceList.size());
     for(int i = 0; i < _faceList.size(); i++) {
-        _weightEigenFacesPerFace[i] = vector<float>(_maxEigenFaces);
-        VectorXd deviation = _faceListDeviation[i];
-        for(int j = 0; j < _maxEigenFaces; j++) {
-            _weightEigenFacesPerFace[i][j] = deviation.dot(_eigenFaces.col(j));
+        _weightEigenFacesPerFace[i] = vector<float>(_nEigenFaces);
+        for(int j = 0; j < _nEigenFaces; j++) {
+            _weightEigenFacesPerFace[i][j] = _faceListDeviation[i].dot(_eigenFaces.col(j));
+            cout << "Weight " << j << " of face " << i << ": " << _weightEigenFacesPerFace[i][j] << endl;
+            cout << "Deviation " << i << ": " << _faceListDeviation[i].transpose() << endl;
+            cout << "Eigen face " << j << ": " << _eigenFaces.col(j).transpose() << endl;
         }
     }
     cout << endl;
@@ -243,12 +265,14 @@ void computeEigenFaceOffsets() {
     for(int i = 0; i < _faceList.size(); i++) {
          MatrixXd sum(_faceList[i].rows(),_faceList[i].cols());
         for(int j = 0; j < _nEigenFaces; j++) {
-            VectorXd weighted = _weightEigenFacesPerFace[i][j] * _eigenFaces.col(j);
-            MatrixXd weightM(sum.rows(), sum.cols());
-            weightM << weighted.segment(0,sum.rows()), weighted.segment(sum.rows(),sum.rows()), weighted.segment(2 * sum.rows(),sum.rows());
-            sum += weightM;
+            MatrixXd weighted = _weightEigenFacesPerFace[i][j] * _eigenFaces.col(j);
+            cout << "Computation for Eigen face offset: " << i << endl;
+            cout << "Weight: " << _weightEigenFacesPerFace[i][j] << endl;
+            cout << "Eigen face: " << _eigenFaces.col(j).transpose() << endl;
+            convert1Dto3D(weighted);
+            sum += weighted;
         }
-        _faceOffsets[i] = sum / _nEigenFaces;
+        _faceOffsets[i] = sum / (double) _nEigenFaces;
     }
     cout << endl;
 }
