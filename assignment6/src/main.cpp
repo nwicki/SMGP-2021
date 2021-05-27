@@ -46,6 +46,7 @@ const string _fileEigenFaces = "eigenfaces.txt";
 void loadFaces();
 void storeEigenFaces();
 void loadEigenFaces();
+void computeMeanFace();
 
 bool endsWith(const string& str, const string& suffix) {
     return str.size() >= suffix.size() && 0 == str.compare(str.size()-suffix.size(), suffix.size(), suffix);
@@ -72,6 +73,7 @@ void loadFaces() {
     // Store faces in a list
     MatrixXd vertices;
     MatrixXi faces;
+    _faceList = vector<MatrixXd>();
     for(auto it = _faceFiles.begin(); it != _faceFiles.end(); it++){
         string file = _dataExample1 + *it;
         cout << "Read file: " << file << "\n";
@@ -86,21 +88,22 @@ void computePCA() {
     int nVertices = _faceList[0].cols() * _faceList[0].rows();
 
     _PCA_A.resize(nVertices, _faceList.size());
-
+    computeMeanFace();
     // Add each face in the list as a vector to the PCA matrix
     for(int i = 0; i < _faceList.size(); i++){
         MatrixXd vertices = _faceList[0];
+        vertices -= _meanFace;
         // Squish 3D into 1D
-        vertices.resize(nVertices,1);
+        vertices.resize(nVertices, 1);
         _PCA_A.col(i) = vertices;
     }
-
     // Center all vertices in _PCA_A
-    _PCA_A = (_PCA_A.colwise() - _PCA_A.rowwise().mean()).transpose();
-    int rows = _faceList[0].rows();
+//    RowVectorXd mean = _PCA_A.colwise().mean();
+//    _PCA_A = _PCA_A.rowwise() - mean;
+
     // Compute selfadjoint covariance matrix for more stable eigen decomposition:
     // https://eigen.tuxfamily.org/dox/classEigen_1_1SelfAdjointEigenSolver.html
-    _PCA_Covariance = _PCA_A.adjoint() * _PCA_A * (1 / _PCA_A.rows());
+    _PCA_Covariance = _PCA_A * _PCA_A.adjoint();
     // Compute selfadjoint eigendecomposition
     SelfAdjointEigenSolver<MatrixXd> eigenDecomposition(_PCA_Covariance);
     // Save transformations for user interaction
@@ -139,6 +142,14 @@ void loadEigenFaces() {
         _eigenFaces.row(i) = RowVectorXd::Map(eigenFaces[i].data(), eigenFaces[i].size());
     }
     cout << endl;
+}
+
+void computeMeanFace() {
+    MatrixXd sum = _faceList[0];
+    for(int i = 1; i < _faceList.size(); i++) {
+        sum += _faceList[i];
+    }
+    _meanFace = sum / _faceList.size();
 }
 
 int pickVertex(int mouse_x, int mouse_y) {
@@ -228,11 +239,7 @@ int main(int argc, char *argv[]) {
                         return;
                     }
                     else {
-                        MatrixXd sum = _faceList[0];
-                        for(int i = 1; i < _faceList.size(); i++) {
-                            sum += _faceList[i];
-                        }
-                        _meanFace = sum / _faceList.size();
+                        computeMeanFace();
                     }
                 }
                 viewer.data().clear();
