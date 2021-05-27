@@ -177,13 +177,17 @@ void computePCA() {
     // Get Eigen vectors
     MatrixXd eigenVectors = eigenDecomposition.eigenvectors();
     // Compute dominant Eigen faces using the approach described in https://www.face-rec.org/algorithms/PCA/jcn.pdf - page 5
-    _eigenFaces.resize(_PCA_A.rows(),eigenVectors.cols());
+    MatrixXd decreasing(_PCA_A.rows(),eigenVectors.cols());
     for(int i = 0; i < eigenVectors.cols(); i++) {
         for(int j = 0; j < eigenVectors.rows(); j++) {
-            _eigenFaces.col(i) += eigenVectors.col(i)(j) * _faceListDeviation[j];
+            decreasing.col(i) += eigenVectors.col(i)(j) * _faceListDeviation[j];
         }
     }
-    cout << _eigenFaces.col(0).transpose() << endl;
+    // Order Eigen faces in decreasing order
+    _eigenFaces.resize(decreasing.rows(),_maxEigenFaces);
+    for(int i = 0; i < _maxEigenFaces; i++) {
+        _eigenFaces.col(i) = decreasing.col(decreasing.cols() - 1 - i);
+    }
     // Result runtime
     auto end = chrono::high_resolution_clock::now();
     cout << "PCA execution time: " << chrono::duration_cast<chrono::milliseconds> (end-start).count() << " ms" << endl;
@@ -248,9 +252,6 @@ void computeEigenFaceWeights() {
         _weightEigenFacesPerFace[i] = vector<float>(_nEigenFaces);
         for(int j = 0; j < _nEigenFaces; j++) {
             _weightEigenFacesPerFace[i][j] = _faceListDeviation[i].dot(_eigenFaces.col(j));
-            cout << "Weight " << j << " of face " << i << ": " << _weightEigenFacesPerFace[i][j] << endl;
-            cout << "Deviation " << i << ": " << _faceListDeviation[i].transpose() << endl;
-            cout << "Eigen face " << j << ": " << _eigenFaces.col(j).transpose() << endl;
         }
     }
     cout << endl;
@@ -266,9 +267,6 @@ void computeEigenFaceOffsets() {
          MatrixXd sum(_faceList[i].rows(),_faceList[i].cols());
         for(int j = 0; j < _nEigenFaces; j++) {
             MatrixXd weighted = _weightEigenFacesPerFace[i][j] * _eigenFaces.col(j);
-            cout << "Computation for Eigen face offset: " << i << endl;
-            cout << "Weight: " << _weightEigenFacesPerFace[i][j] << endl;
-            cout << "Eigen face: " << _eigenFaces.col(j).transpose() << endl;
             convert1Dto3D(weighted);
             sum += weighted;
         }
