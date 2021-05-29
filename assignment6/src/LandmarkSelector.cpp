@@ -2,6 +2,7 @@
 #include <igl/opengl/glfw/Viewer.h>
 #include <vector>
 #include <igl/unproject_onto_mesh.h>
+#include <igl/xml/serialize_xml.h>
 #include "LandmarkSelector.h"
 
 using namespace std;
@@ -67,7 +68,7 @@ void LandmarkSelector::delete_all_landmarks() {
 }
 
 void LandmarkSelector::save_landmarks_to_file(vector<Landmark> landmarks, string filename) {
-    igl::serialize(landmarks, "landmarks", filename, true);
+    igl::xml::serialize_xml(landmarks, "landmarks", filename, false, true);
 }
 
 vector<Landmark> LandmarkSelector::get_landmarks_from_file(string filename) {
