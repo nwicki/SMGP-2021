@@ -1,3 +1,5 @@
+#pragma once
+
 #include <igl/read_triangle_mesh.h>
 #include <igl/opengl/glfw/Viewer.h>
 #include <vector>

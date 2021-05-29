@@ -47,6 +47,9 @@ vector<string> face_template_names;
 static int selected_template_id = 2;
 string tmpl_folder_path = "../data/face_template/";
 
+bool hide_scan_face = false;
+float non_rigid_lambda = 1.0f;
+
 bool callback_mouse_down(Viewer &viewer, int button, int modifier) {
 
     if (button == (int) Viewer::MouseButton::Right)
@@ -304,7 +307,24 @@ void draw_face_registration_window(ImGuiMenu &menu) {
         cout << "Align Rigid" << endl;
     }
     if (ImGui::Button("Align Non-Rigid", ImVec2(-1, 0))) {
+        string tmpl_file_path = tmpl_folder_path + face_template_names[selected_template_id] + "_landmarks";
+        string face_file_path = face_folder_path + landmarked_face_names[selected_face_id] + "_landmarks";
+        vector<LandmarkSelector::Landmark> landmarks_tmpl = landmarkSelector.get_landmarks_from_file(tmpl_file_path);
+        MatrixXd P = landmarkSelector.get_landmarks_from_file(face_file_path, V, F);
+        faceRegistor.build_octree(V);
+        faceRegistor.align_non_rigid_step(V_tmpl, F_tmpl, landmarks_tmpl, V, P, non_rigid_lambda);
+        set_mesh(V_tmpl, F_tmpl, 0);
         cout << "Align Non-Rigid" << endl;
+    }
+
+    if (ImGui::InputFloat("lambda", &non_rigid_lambda))
+    {
+        non_rigid_lambda = std::max(0.0f, std::min(1000.0f, non_rigid_lambda));
+    }
+
+    if (ImGui::Checkbox("Hide scan mesh", &hide_scan_face)) {
+        viewer.data_list[1].show_faces = !hide_scan_face;
+        viewer.data_list[1].show_lines = !hide_scan_face;
     }
 
     ImGui::Text("Template Face");
