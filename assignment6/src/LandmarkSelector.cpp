@@ -2,6 +2,7 @@
 #include <igl/opengl/glfw/Viewer.h>
 #include <vector>
 #include <igl/unproject_onto_mesh.h>
+#include <iostream>
 #include "LandmarkSelector.h"
 
 using namespace std;
@@ -39,7 +40,7 @@ void LandmarkSelector::add_landmark_at_mouse_position(const MatrixXd& V, const M
     double x = viewer.current_mouse_x;
     double y = viewer.core.viewport(3) - viewer.current_mouse_y;
     if (igl::unproject_onto_mesh(Eigen::Vector2f(x, y), viewer.core.view, viewer.core.proj, viewer.core.viewport, V, F,
-                                    fid, bc)) {
+                                 fid, bc)) {
         Eigen::RowVector3i face_point_indices = F.row(fid);
         Eigen::RowVector3d p0 = V.row(face_point_indices(0));
         Eigen::RowVector3d p1 = V.row(face_point_indices(1));
@@ -48,7 +49,9 @@ void LandmarkSelector::add_landmark_at_mouse_position(const MatrixXd& V, const M
         // Add landmark to current_landmarks
         Landmark new_landmark = Landmark();
         new_landmark.face_index = fid;
-        new_landmark.bary_coords = Vector3f(bc(0), bc(1), bc(2));
+        new_landmark.bary0 = bc(0);
+        new_landmark.bary1 = bc(1);
+        new_landmark.bary2 = bc(2);
         current_landmarks.push_back(new_landmark);
 
         // Display new landmark
@@ -67,12 +70,41 @@ void LandmarkSelector::delete_all_landmarks() {
 }
 
 void LandmarkSelector::save_landmarks_to_file(vector<Landmark> landmarks, string filename) {
-    igl::serialize(landmarks, "landmarks", filename, true);
+    ofstream myfile (filename);
+    if (myfile.is_open()) {
+        for (int i = 0; i < landmarks.size(); ++i) {
+            Landmark landmark = landmarks[i];
+            myfile << landmark.face_index << " " << landmark.bary0 << " " << landmark.bary1 << " " << landmark.bary2 << "\n";
+        }
+        myfile.close();
+    } else {
+        cout << "Error: Unable to open file" << endl;
+    }
 }
 
 vector<Landmark> LandmarkSelector::get_landmarks_from_file(string filename) {
     vector<Landmark> deserialized_landmarks;
-    igl::deserialize(deserialized_landmarks, "landmarks", filename);
+
+    string line;
+    ifstream myfile (filename);
+    if (myfile.is_open()) {
+        int faceIndex;
+        float bary0;
+        float bary1;
+        float bary2;
+        while (myfile >> faceIndex >> bary0 >> bary1 >> bary2) {
+            Landmark deserialized_landmark = Landmark();
+            deserialized_landmark.face_index = faceIndex;
+            deserialized_landmark.bary0 = bary0;
+            deserialized_landmark.bary1 = bary1;
+            deserialized_landmark.bary2 = bary2;
+
+            deserialized_landmarks.push_back(deserialized_landmark);
+        }
+        myfile.close();
+    } else {
+        cout << "Error: Unable to open file" << endl;
+    }
     return deserialized_landmarks;
 }
 

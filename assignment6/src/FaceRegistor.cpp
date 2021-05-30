@@ -69,7 +69,7 @@ void FaceRegistor::align_non_rigid_step(MatrixXd &V_tmpl, const MatrixXi &F_tmpl
     int index = 0;
     for(LandmarkSelector::Landmark landmark : landmarks_tmpl) {
         RowVector3i vi = F_tmpl.row(landmark.face_index);
-        Vector3f bc = landmark.bary_coords;
+        Vector3f bc(landmark.bary0, landmark.bary1, landmark.bary2);
         tripletList.push_back(T(index, vi(0), bc(0)));
         tripletList.push_back(T(index, vi(1), bc(1)));
         tripletList.push_back(T(index, vi(2), bc(2)));
