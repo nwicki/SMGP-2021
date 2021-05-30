@@ -12,13 +12,17 @@ using Viewer = igl::opengl::glfw::Viewer;
 class LandmarkSelector {
 public:
 
-    struct Landmark: public igl::Serializable {
+    struct Landmark {
         int face_index;
-        Vector3f bary_coords;
 
-        void InitSerialization(){
-            this->Add(face_index  , "face_index");
-            this->Add(bary_coords  , "bary_coords");
+        float bary0;
+        float bary1;
+        float bary2;
+
+        template<class Archive>
+        void serialize(Archive & archive)
+        {
+            archive( face_index, bary0, bary1, bary2 );
         }
 
         RowVector3d get_cartesian_coordinates(const MatrixXd& V, const MatrixXi& F) {
@@ -26,7 +30,7 @@ public:
             RowVector3d p0 = V.row(vertex_indices(0));
             RowVector3d p1 = V.row(vertex_indices(1));
             RowVector3d p2 = V.row(vertex_indices(2));
-            return bary_coords(0) * p0 + bary_coords(1) * p1 + bary_coords(2) * p2;
+            return bary0 * p0 + bary1 * p1 + bary2 * p2;
         }
     };
 
