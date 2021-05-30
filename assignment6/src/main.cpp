@@ -3,7 +3,7 @@
 #include <igl/opengl/glfw/imgui/ImGuiMenu.h>
 #include <imgui/imgui.h>
 #include <vector>
-#include<string>
+#include <string>
 #include "LandmarkSelector.cpp"
 
 using namespace std;
@@ -23,7 +23,7 @@ LandmarkSelector landmarkSelector = LandmarkSelector();
 
 // Mesh Loading
 string folder_path = "../data/face_template/";
-string filename = "headtemplate";
+string filename = "g";
 string file_extension = ".obj";
 
 const string filenames[] = {
@@ -160,6 +160,13 @@ bool callback_key_down(Viewer &viewer, unsigned char key, int modifiers) {
     if(key == '1') {
         // is_selection_enabled = !is_selection_enabled;
     }
+
+    if(key == '2') {
+
+        for (int i = 0; i < landmarkSelector.current_landmarks.size(); ++i) {
+            cout << landmarkSelector.current_landmarks[i].bary_coords << endl;
+        }
+    }
     return true;
 }
 
@@ -193,7 +200,7 @@ int main(int argc, char *argv[]) {
             }
 
             if (ImGui::Button("Save Landmarks", ImVec2(-1, 0))) {
-                string file_path = folder_path + filename + "_landmarks";
+                string file_path = folder_path + filename + "_landmarks_new";
                 landmarkSelector.save_landmarks_to_file(landmarkSelector.current_landmarks, file_path);
                 cout << landmarkSelector.current_landmarks.size() << " landmarks saved to " << file_path << endl;
             }
@@ -204,9 +211,15 @@ int main(int argc, char *argv[]) {
                 landmarkSelector.display_landmarks(landmarkSelector.current_landmarks, V, F, viewer);
             }
 
-            if (ImGui::Button("Load Landmarks", ImVec2(-1, 0))) {
-                string file_path = folder_path + filename + "_landmarks";
+            if (ImGui::Button("Load Landmarks Old", ImVec2(-1, 0))) {
+                string file_path = folder_path + filename + "_landmarks_old";
                 landmarkSelector.current_landmarks = landmarkSelector.get_landmarks_from_file(file_path);
+                cout << landmarkSelector.current_landmarks.size() << " landmarks loaded from " << file_path << endl;
+            }
+
+            if (ImGui::Button("Load Landmarks New", ImVec2(-1, 0))) {
+                string file_path = folder_path + filename + "_landmarks_new";
+                landmarkSelector.current_landmarks = landmarkSelector.get_landmarks_from_file_new(file_path);
                 cout << landmarkSelector.current_landmarks.size() << " landmarks loaded from " << file_path << endl;
             }
 
