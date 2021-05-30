@@ -51,8 +51,6 @@ MatrixXd _weightEigenFacesPerFace;
 int _morphId1, _morphId2;
 // Morph factor
 float _morphLambda;
-// Morphed face
-MatrixXd _morphedFace;
 
 // Constant variables
 const string _dataExample1 = "../data/aligned_faces_example/example1/";
@@ -312,10 +310,6 @@ int pickVertex(int mouse_x, int mouse_y) {
 
 }
 
-void computeMorphedFace(){
-
-}
-
 bool callback_mouse_down(Viewer& viewer, int button, int modifier)
 {
     if (button == (int) Viewer::MouseButton::Right)
@@ -480,9 +474,6 @@ int main(int argc, char *argv[]) {
             {
                 std::cerr << "mean face or offsets not computed yet" << '\n';
             }
-        }
-        if (ImGui::Button("testbittpm", ImVec2(-1,0))) {
-            cout << "test" << endl;
         }
         ImGui::End();
     };
