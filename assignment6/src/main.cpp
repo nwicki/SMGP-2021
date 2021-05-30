@@ -8,8 +8,7 @@
 #include "FaceRegistor.h"
 #include <boost/filesystem.hpp>
 #include <iostream>
-#include <string>
-#include "LandmarkSelector.cpp"
+
 
 using namespace std;
 using namespace Eigen;
