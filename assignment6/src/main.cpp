@@ -281,7 +281,7 @@ void draw_face_registration_window(ImGuiMenu &menu) {
     ImGui::Separator();
 
     if (ImGui::Button("Center & Scale face", ImVec2(-1, 0))) {
-        string face_file_path = face_folder_path + landmarked_face_names[selected_face_id] + "_landmarks";
+        string face_file_path = face_folder_path + landmarked_face_names[selected_face_id] + "_landmarks.txt";
         MatrixXd P = landmarkSelector.get_landmarks_from_file(face_file_path, V, F);
         faceRegistor.center_and_rescale_mesh(V, P);
         set_mesh(V, F, 1);
@@ -289,8 +289,8 @@ void draw_face_registration_window(ImGuiMenu &menu) {
     }
 
     if (ImGui::Button("Center & Scale template", ImVec2(-1, 0))) {
-        string tmpl_file_path = tmpl_folder_path + face_template_names[selected_template_id] + "_landmarks";
-        string face_file_path = face_folder_path + landmarked_face_names[selected_face_id] + "_landmarks";
+        string tmpl_file_path = tmpl_folder_path + face_template_names[selected_template_id] + "_landmarks.txt";
+        string face_file_path = face_folder_path + landmarked_face_names[selected_face_id] + "_landmarks.txt";
         MatrixXd P_tmpl = landmarkSelector.get_landmarks_from_file(tmpl_file_path, V_tmpl, F_tmpl);
         MatrixXd P = landmarkSelector.get_landmarks_from_file(face_file_path, V, F);
         faceRegistor.center_and_rescale_template(V_tmpl, P_tmpl, P);
@@ -299,8 +299,8 @@ void draw_face_registration_window(ImGuiMenu &menu) {
     }
 
     if (ImGui::Button("Align Rigid", ImVec2(-1, 0))) {
-        string tmpl_file_path = tmpl_folder_path + face_template_names[selected_template_id] + "_landmarks";
-        string face_file_path = face_folder_path + landmarked_face_names[selected_face_id] + "_landmarks";
+        string tmpl_file_path = tmpl_folder_path + face_template_names[selected_template_id] + "_landmarks.txt";
+        string face_file_path = face_folder_path + landmarked_face_names[selected_face_id] + "_landmarks.txt";
         MatrixXd P_tmpl = landmarkSelector.get_landmarks_from_file(tmpl_file_path, V_tmpl, F_tmpl);
         MatrixXd P = landmarkSelector.get_landmarks_from_file(face_file_path, V, F);
         faceRegistor.align_rigid(V_tmpl, P_tmpl, P);
@@ -308,8 +308,8 @@ void draw_face_registration_window(ImGuiMenu &menu) {
         cout << "Align Rigid" << endl;
     }
     if (ImGui::Button("Align Non-Rigid", ImVec2(-1, 0))) {
-        string tmpl_file_path = tmpl_folder_path + face_template_names[selected_template_id] + "_landmarks";
-        string face_file_path = face_folder_path + landmarked_face_names[selected_face_id] + "_landmarks";
+        string tmpl_file_path = tmpl_folder_path + face_template_names[selected_template_id] + "_landmarks.txt";
+        string face_file_path = face_folder_path + landmarked_face_names[selected_face_id] + "_landmarks.txt";
         vector<LandmarkSelector::Landmark> landmarks_tmpl = landmarkSelector.get_landmarks_from_file(tmpl_file_path);
         MatrixXd P = landmarkSelector.get_landmarks_from_file(face_file_path, V, F);
         faceRegistor.build_octree(V);
