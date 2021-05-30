@@ -3,8 +3,6 @@
 #include <vector>
 #include <igl/unproject_onto_mesh.h>
 #include <iostream>
-#include <string>
-#include <fstream>
 
 using namespace std;
 using namespace Eigen;
@@ -13,9 +11,8 @@ using Viewer = igl::opengl::glfw::Viewer;
 class LandmarkSelector {
 public:
 
-    struct Landmark: public igl::Serializable {
+    struct Landmark {
         int face_index;
-        Vector3f bary_coords;
 
         float bary0;
         float bary1;
@@ -25,11 +22,6 @@ public:
         void serialize(Archive & archive)
         {
             archive( face_index, bary0, bary1, bary2 );
-        }
-
-        void InitSerialization() {
-            this->Add(face_index, "face_index");
-            this->Add(bary_coords, "bary_coords");
         }
 
         RowVector3d get_cartesian_coordinates(const MatrixXd& V, const MatrixXi& F) {
@@ -104,31 +96,28 @@ public:
 
     void save_landmarks_to_file(vector<Landmark> landmarks, string filename) {
         ofstream myfile (filename);
-        if (myfile.is_open())
-        {
+        if (myfile.is_open()) {
             for (int i = 0; i < landmarks.size(); ++i) {
                 Landmark landmark = landmarks[i];
                 myfile << landmark.face_index << " " << landmark.bary0 << " " << landmark.bary1 << " " << landmark.bary2 << "\n";
             }
             myfile.close();
+        } else {
+            cout << "Unable to open file";
         }
-        else cout << "Unable to open file";
     }
 
-    vector<Landmark> get_landmarks_from_file_new(string filename) {
+    vector<Landmark> get_landmarks_from_file(string filename) {
         vector<Landmark> deserialized_landmarks;
 
         string line;
         ifstream myfile (filename);
-        if (myfile.is_open())
-        {
+        if (myfile.is_open()) {
             int faceIndex;
             float bary0;
             float bary1;
             float bary2;
-            while (myfile >> faceIndex >> bary0 >> bary1 >> bary2)
-            {
-                cout << faceIndex << ", " << bary0 << ", " << bary1 << ", " << bary2 << '\n';
+            while (myfile >> faceIndex >> bary0 >> bary1 >> bary2) {
                 Landmark deserialized_landmark = Landmark();
                 deserialized_landmark.face_index = faceIndex;
                 deserialized_landmark.bary0 = bary0;
@@ -143,17 +132,4 @@ public:
         };
         return deserialized_landmarks;
     }
-
-    vector<Landmark> get_landmarks_from_file(string filename) {
-        vector<Landmark> deserialized_landmarks;
-        igl::deserialize(deserialized_landmarks, "landmarks", filename);
-        for (int i = 0; i < deserialized_landmarks.size(); ++i) {
-            deserialized_landmarks[i].bary0 = deserialized_landmarks[i].bary_coords(0);
-            deserialized_landmarks[i].bary1 = deserialized_landmarks[i].bary_coords(1);
-            deserialized_landmarks[i].bary2 = deserialized_landmarks[i].bary_coords(2);
-        }
-        return deserialized_landmarks;
-    }
-
-
 };
