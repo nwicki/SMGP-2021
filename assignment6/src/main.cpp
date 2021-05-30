@@ -82,14 +82,16 @@ bool endsWith(const string& str, const string& suffix);
 void convert3Dto1D(MatrixXd& m);
 void convert1Dto3D(MatrixXd& m);
 void initializeParameters();
-void loadFaces();
+void loadFaces(Viewer& viewer, bool init);
 void computeMeanFace();
 void computeDeviation();
 void computePCA();
 void computeEigenFaceWeights();
 void computeEigenFaceOffsets();
 void computeEigenFaceOffsetIndex();
+void recomputeAll();
 void showAverageFace(Viewer& viewer);
+void updateWeightEigenFaces();
 void updateFaceIndex(Viewer& viewer);
 void showFace(Viewer& viewer);
 void showEigenFaceOffset(Viewer& viewer);
@@ -175,7 +177,9 @@ void initializeParameters() {
     _recomputeEigenFaceOffsets = true;
 }
 
-void loadFaces(bool init) {
+void loadFaces(Viewer& viewer, bool init) {
+    _weightEigenFaces.resize(_nEigenFaces);
+    _weightEigenFaces.setZero();
     if(!init) {
         string file = igl:: file_dialog_open();
         struct stat buffer;
@@ -224,6 +228,11 @@ void loadFaces(bool init) {
     }
     F = faces;
     initializeParameters();
+    recomputeAll();
+    updateFaceIndex(viewer);
+    showFace(viewer);
+    viewer.snap_to_canonical_quaternion();
+    viewer.core.align_camera_center(viewer.data().V, viewer.data().F);
     cout << endl;
 }
 
@@ -371,6 +380,15 @@ void computeEigenFaceOffsetIndex() {
     _faceOffset = sum;
 }
 
+void recomputeAll() {
+    computeMeanFace();
+    computeDeviation();
+    computePCA();
+    computeEigenFaceWeights();
+    computeEigenFaceOffsets();
+    computeEigenFaceOffsetIndex();
+}
+
 void showAverageFace(Viewer& viewer) {
     if(_meanFace.rows() == 0) {
         cout << "No mean face computed" << endl;
@@ -382,6 +400,19 @@ void showAverageFace(Viewer& viewer) {
         viewer.data().clear();
         viewer.data().set_mesh(_meanFace, F);
     }
+}
+
+void updateWeightEigenFaces() {
+    _weightEigenFaces.resize(_nEigenFaces);
+    if(_faceIndex == -1) {
+        _weightEigenFaces.setZero();
+    }
+    else {
+        for(int i = 0; i < _nEigenFaces; i++) {
+            _weightEigenFaces(i) = _weightEigenFacesPerFace(i,_faceIndex);
+        }
+    }
+    computeEigenFaceOffsetIndex();
 }
 
 void updateFaceIndex(Viewer& viewer) {
@@ -398,11 +429,7 @@ void updateFaceIndex(Viewer& viewer) {
         cout << "No weights computed" << endl;
     }
     else {
-        _weightEigenFaces.resize(_nEigenFaces);
-        for(int i = 0; i < _nEigenFaces; i++) {
-            _weightEigenFaces(i) = _weightEigenFacesPerFace(i,_faceIndex);
-        }
-        computeEigenFaceOffsetIndex();
+        updateWeightEigenFaces();
     }
 }
 
@@ -450,7 +477,7 @@ void showMorphedFace(Viewer& viewer) {
             viewer.data().set_mesh(_meanFace + _morphLambda * _faceOffsets[_morphIndex], F);
         }
         else {
-            viewer.data().set_mesh(_meanFace + _morphLambda * _faceOffsets[_morphIndex] + (1 - _morphLambda) * _faceOffsets[_faceIndex], F);
+            viewer.data().set_mesh(_meanFace + _morphLambda * _faceOffsets[_morphIndex] + (1 - _morphLambda) * _faceOffset, F);
         }
     }
 }
@@ -529,7 +556,7 @@ int main(int argc, char *argv[]) {
         ImGui::Begin("PCA Menu", NULL, ImGuiWindowFlags_AlwaysAutoResize);
         ImGui::Text("Data set: %s",_currentData.c_str());
         if (ImGui::Button("Load faces", ImVec2(-1,0))) {
-            loadFaces(false);
+            loadFaces(viewer, false);
         }
 
         if (ImGui::Button("Show average face", ImVec2(-1,0))) {
@@ -546,9 +573,16 @@ int main(int argc, char *argv[]) {
 
         ImGui::Separator();
 
+        if(ImGui::InputInt("#Eigen faces", &_nEigenFaces)) {
+            _nEigenFaces = min(max(1,_nEigenFaces), _maxEigenFaces);
+            initializeParameters();
+            recomputeAll();
+            updateWeightEigenFaces();
+            showEigenFaceOffset(viewer);
+        }
+
         for(int i = 0; i < _nEigenFaces; i++) {
-            if(ImGui::SliderFloat(("Eigen face " + to_string(i)).c_str(), &_weightEigenFaces(i),-200.0,200.0)) {
-                _weightEigenFaces(i) = _weightEigenFaces(i);
+            if(ImGui::SliderFloat(("Eigen face " + to_string(i)).c_str(), &_weightEigenFaces(i),-1000.0,1000.0)) {
                 computeEigenFaceOffsetIndex();
                 viewer.data().clear();
                 viewer.data().set_mesh(_meanFace + _faceOffset, F);
@@ -561,6 +595,7 @@ int main(int argc, char *argv[]) {
 
         if(ImGui::InputInt("Morph Face Index", &_morphIndex)) {
             _morphIndex = min(max(0, _morphIndex), (int) (_faceList.size() - 1));
+            showMorphedFace(viewer);
         }
 
         if(ImGui::SliderFloat("Morphing Variable", &_morphLambda,0,1)) {
@@ -575,16 +610,7 @@ int main(int argc, char *argv[]) {
 
     // PCA initialization
     _currentData = *_dataExamples.begin();
-    _weightEigenFaces.resize(_nEigenFaces);
-    _weightEigenFaces.setZero();
-    loadFaces(true);
-    computeMeanFace();
-    computeDeviation();
-    computePCA();
-    computeEigenFaceWeights();
-    computeEigenFaceOffsets();
-    updateFaceIndex(viewer);
-    showFace(viewer);
+    loadFaces(viewer, true);
 
     // Viewer initialization
     viewer.callback_key_down = callback_key_down;
