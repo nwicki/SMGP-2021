@@ -56,14 +56,6 @@ int _morphIndex;
 // Morph factor
 float _morphLambda;
 
-// Booleans to reduce recomputation
-bool _recomputeMeanFace = false;
-bool _recomputeDeviation = false;
-bool _recomputePCA = false;
-bool _recomputeEigenFaceWeights = false;
-bool _recomputeEigenFaceOffsets = false;
-
-
 // Constant variables
 const set<string> _dataExamples = {
         "../data/aligned_faces_example/example1/",
@@ -76,8 +68,6 @@ const int _maxEigenFaces = 20;
 // Check variables
 
 // Functions
-void storeEigenFaces();
-void loadEigenFaces();
 bool endsWith(const string& str, const string& suffix);
 void convert3Dto1D(MatrixXd& m);
 void convert1Dto3D(MatrixXd& m);
@@ -96,38 +86,6 @@ void updateFaceIndex(Viewer& viewer);
 void showFace(Viewer& viewer);
 void showEigenFaceOffset(Viewer& viewer);
 void showMorphedFace(Viewer& viewer);
-
-void storeEigenFaces() {
-    string filePath = _currentData + _fileEigenFaces;
-    cout << "Storing " << _maxEigenFaces << " eigen faces in: " << filePath << endl;
-    ofstream file(_currentData + _fileEigenFaces);
-    for(int i = 0; i < _maxEigenFaces; i++) {
-        file << _eigenFaces.col(i).transpose() << endl;
-    }
-    file.close();
-    cout << endl;
-}
-
-void loadEigenFaces() {
-    string filePath = _currentData + _fileEigenFaces;
-    cout << "Loading " << _maxEigenFaces << " eigen faces from: " << filePath << endl;
-    ifstream file(filePath);
-    vector<vector<double>> eigenFaces;
-    double a;
-    string row;
-    while(getline(file, row)) {
-        istringstream rowStream(row);
-        eigenFaces.push_back(vector<double>());
-        while(rowStream >> a) {
-            eigenFaces.back().push_back(a);
-        }
-    }
-    _eigenFaces.resize(eigenFaces[0].size(), eigenFaces.size());
-    for(int i = 0; i < _eigenFaces.cols(); i++) {
-        _eigenFaces.col(i) = VectorXd::Map(eigenFaces[i].data(), eigenFaces[i].size());
-    }
-    cout << endl;
-}
 
 void convert3Dto1D(MatrixXd& m) {
     if(m.cols() != 3) {
@@ -170,11 +128,6 @@ bool endsWith(const string& str, const string& suffix) {
 void initializeParameters() {
     _weightEigenFaces.resize(_nEigenFaces);
     _weightEigenFaces.setZero();
-    _recomputeMeanFace = true;
-    _recomputeDeviation = true;
-    _recomputePCA = true;
-    _recomputeEigenFaceWeights = true;
-    _recomputeEigenFaceOffsets = true;
 }
 
 void loadFaces(Viewer& viewer, bool init) {
@@ -237,9 +190,6 @@ void loadFaces(Viewer& viewer, bool init) {
 }
 
 void computeMeanFace() {
-    if(!_recomputeMeanFace) {
-        return;
-    }
     if(_faceList.empty()) {
         cout << "No faces loaded" << endl;
         return;
@@ -250,14 +200,10 @@ void computeMeanFace() {
         sum += _faceList[i];
     }
     _meanFace = sum / _faceList.size();
-    _recomputeMeanFace = false;
     cout << endl;
 }
 
 void computeDeviation() {
-    if(!_recomputeDeviation) {
-        return;
-    }
     if(_faceList.empty()) {
         cout << "No faces loaded" << endl;
         return;
@@ -271,14 +217,10 @@ void computeDeviation() {
         convert3Dto1D(diff);
         _PCA_A.col(i) = diff;
     }
-    _recomputeDeviation = false;
     cout << endl;
 }
 
 void computePCA() {
-    if(!_recomputePCA) {
-        return;
-    }
     if(_faceList.empty()) {
         cout << "No faces loaded" << endl;
         return;
@@ -312,15 +254,10 @@ void computePCA() {
     // Result runtime
     auto end = chrono::high_resolution_clock::now();
     cout << "PCA execution time: " << chrono::duration_cast<chrono::milliseconds> (end-start).count() << " ms" << endl;
-    // PCA for current faces computed
-    _recomputePCA = false;
     cout << endl;
 }
 
 void computeEigenFaceWeights() {
-    if(!_recomputeEigenFaceWeights) {
-        return;
-    }
     if(_eigenFaces.size() < _nEigenFaces) {
         cout << "Not enough eigen faces available" << endl;
         return;
@@ -336,15 +273,10 @@ void computeEigenFaceWeights() {
             _weightEigenFacesPerFace(j,i) = _PCA_A.col(i).dot(_eigenFaces.col(j));
         }
     }
-    // Eigen face weights for current faces computed
-    _recomputeEigenFaceWeights = false;
     cout << endl;
 }
 
 void computeEigenFaceOffsets() {
-    if(!_recomputeEigenFaceOffsets) {
-        return;
-    }
     if(_weightEigenFacesPerFace.size() < _faceList.size()) {
         cout << "Not enough weights available" << endl;
         return;
@@ -361,7 +293,6 @@ void computeEigenFaceOffsets() {
         }
         _faceOffsets[i] = sum;
     }
-    _recomputeEigenFaceOffsets = false;
     cout << endl;
 }
 
@@ -547,11 +478,6 @@ int main(int argc, char *argv[]) {
     };
 
     menu.callback_draw_custom_window = [&]() {
-        computeMeanFace();
-        computeDeviation();
-        computePCA();
-        computeEigenFaceWeights();
-        computeEigenFaceOffsets();
         ImGui::SetNextWindowPos(ImVec2(180.f * menu.menu_scaling(), 0), ImGuiCond_FirstUseEver);
         ImGui::Begin("PCA Menu", NULL, ImGuiWindowFlags_AlwaysAutoResize);
         ImGui::Text("Data set: %s",_currentData.c_str());
