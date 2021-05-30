@@ -1,4 +1,6 @@
 cmake_minimum_required(VERSION 3.1)
+set(CMAKE_C_COMPILER "gcc")
+
 project(assignment6)
 
 set(CMAKE_CXX_FLAGS "-O3 -Wall -Wextra -fopenmp")
