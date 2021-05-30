@@ -48,27 +48,11 @@ void PCA::initializeParameters() {
 }
 
 void PCA::loadFaces(Viewer& viewer, MatrixXi& F, bool init) {
-    if(!init) {
-        string file = igl:: file_dialog_open();
-        struct stat buffer;
-        if(stat (file.c_str(), &buffer) != 0) {
-            return;
-        }
-        _currentData = file.substr(0,file.find_last_of("/") + 1);
-    }
-    if(_dataExamples.find(_currentData) == _dataExamples.end()) {
-        // Get file path into relational format
-        _currentData = "../" + _currentData.substr(_currentData.length() - (*_dataExamples.begin()).length() + 3);
-        if(_dataExamples.find(_currentData) == _dataExamples.end()) {
-            cout << "No viable data set chosen: " << _currentData << endl;
-            return;
-        }
-    }
-    cout << "Load faces from " << _currentData << endl;
+    cout << "Load faces from " << _dataExamples[_currentData] << endl;
     _faceFiles = set<string>();
     DIR *directory;
     struct dirent *entry;
-    if ((directory = opendir(_currentData.c_str())) != NULL) {
+    if ((directory = opendir(_dataExamples[_currentData])) != NULL) {
         // Get all file paths and store in _faceFiles
         while ((entry = readdir(directory)) != NULL) {
             string current = entry->d_name;
@@ -79,7 +63,7 @@ void PCA::loadFaces(Viewer& viewer, MatrixXi& F, bool init) {
         closedir (directory);
     }
     else {
-        cerr << "Failed to load faces: " << _currentData << endl;
+        cerr << "Failed to load faces: " << _dataExamples[_currentData] << endl;
         return;
     }
 
@@ -89,7 +73,7 @@ void PCA::loadFaces(Viewer& viewer, MatrixXi& F, bool init) {
     _faceList = vector<MatrixXd>(_faceFiles.size());
     int i = 0;
     for(auto it = _faceFiles.begin(); it != _faceFiles.end(); it++){
-        string file = _currentData + *it;
+        string file = _dataExamples[_currentData] + *it;
         cout << "Read file: " << file << "\n";
         igl::read_triangle_mesh(file,vertices,faces);
         _faceList[i++] = vertices;

@@ -39,7 +39,7 @@ public:
     // Amount of Eigen faces considered
     int _nEigenFaces = 10;
     // Data folder
-    string _currentData = "";
+    int _currentData = 0;
     // Face index chosen by user
     int _faceIndex = 0;
     // Weights of the face displayed in [0,1]
@@ -52,7 +52,8 @@ public:
     float _morphLambda = 0;
 
     // Constant variables
-    const set<string> _dataExamples = {
+    const vector<const char*> _dataExamples = {
+            "Choose dataset",
             "../data/aligned_faces_example/example1/",
             "../data/aligned_faces_example/example2/",
             "../data/aligned_faces_example/example3/"

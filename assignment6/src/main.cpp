@@ -86,8 +86,8 @@ int main(int argc, char *argv[]) {
     menu.callback_draw_custom_window = [&]() {
         ImGui::SetNextWindowPos(ImVec2(180.f * menu.menu_scaling(), 0), ImGuiCond_FirstUseEver);
         ImGui::Begin("PCA Menu", NULL, ImGuiWindowFlags_AlwaysAutoResize);
-        ImGui::Text("Data set: %s",pca->_currentData.c_str());
-        if (ImGui::Button("Load faces", ImVec2(-1,0))) {
+        ImGui::SetNextItemWidth(-FLT_MIN);
+        if (ImGui::Combo("",&pca->_currentData,pca->_dataExamples.data(),pca->_dataExamples.size())) {
             pca->loadFaces(viewer, F, false);
         }
 
@@ -132,7 +132,7 @@ int main(int argc, char *argv[]) {
 
         ImGui::Text("Morphing of the following indices: \nFace index: %d \nMorph face index: %d", pca->_faceIndex, pca->_morphIndex);
 
-        if(ImGui::SliderFloat("Morphing Variable", &pca->_morphLambda,0,1)) {
+        if(ImGui::SliderFloat("Morph Rate", &pca->_morphLambda,0,1)) {
             pca->showMorphedFace(viewer, F);
         }
 
