@@ -456,22 +456,29 @@ int main(int argc, char *argv[]) {
         ImGui::InputInt("Morph Face index 2", &_morphId2);
         ImGui::SliderFloat("Morphing Variable", &_morphLambda,0,1);
         if (ImGui::Button("Show morphed face", ImVec2(-1,0))) {
-            if(_faceList.empty()) {
-                cout << "No faces loaded" << endl;
-            }
-            else {
-                if(_morphId1 < 0 || _faceList.size() <= _morphId1 || _morphId2 < 0 || _faceList.size() <= _morphId2) {
-                    if(_morphId1 < 0 || _faceList.size() <= _morphId1) {
-                        cout << "Morph Face index 1 out of bound" << endl;
-                    }
-                    if(_morphId2 < 0 || _faceList.size() <= _morphId2) {
-                        cout << "Morph Face index 2 out of bound" << endl;
-                    }
+            try
+            {
+                if(_faceList.empty()) {
+                    cout << "No faces loaded" << endl;
                 }
                 else {
-                    // computeMorphedFace();
-                    viewer.data().set_mesh(_meanFace + _morphLambda * _faceOffsets[_morphId2] + (1 - _morphLambda) * _faceOffsets[_morphId1], F);
+                    if(_morphId1 < 0 || _faceList.size() <= _morphId1 || _morphId2 < 0 || _faceList.size() <= _morphId2) {
+                        if(_morphId1 < 0 || _faceList.size() <= _morphId1) {
+                            cout << "Morph Face index 1 out of bound" << endl;
+                        }
+                        if(_morphId2 < 0 || _faceList.size() <= _morphId2) {
+                            cout << "Morph Face index 2 out of bound" << endl;
+                        }
+                    }
+                    else {
+                        // computeMorphedFace();
+                        viewer.data().set_mesh(_meanFace + _morphLambda * _faceOffsets[_morphId2] + (1 - _morphLambda) * _faceOffsets[_morphId1], F);
+                    }
                 }
+            }
+            catch(const std::exception& e)
+            {
+                std::cerr << "mean face or offsets not computed yet" << '\n';
             }
         }
         if (ImGui::Button("testbittpm", ImVec2(-1,0))) {
