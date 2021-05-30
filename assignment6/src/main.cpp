@@ -26,7 +26,7 @@ Eigen::MatrixXi F;
 // List of faces already preprocessed for PCA
 set<string> _faceFiles;
 vector<MatrixXd> _faceList;
-vector<VectorXd> _faceListDeviation;
+vector<MatrixXd> _faceListDeviation;
 
 vector<MatrixXd> _faceOffsets;
 // cov = A * A^T
@@ -111,11 +111,13 @@ void computeDeviation() {
     }
     cout << "Compute deviation to mean face for each face" << endl;
     computeMeanFace();
-    _faceListDeviation = vector<VectorXd>(_faceList.size());
+    _faceListDeviation = vector<MatrixXd>(_faceList.size());
+    _PCA_A.resize(_faceList[0].cols() * _faceList[0].rows(), _faceList.size());
     for(int i = 0; i < _faceList.size(); i++) {
         MatrixXd diff = _faceList[i] - _meanFace;
-        convert3Dto1D(diff);
         _faceListDeviation[i] = diff;
+        convert3Dto1D(diff);
+        _PCA_A.col(i) = diff;
     }
     cout << endl;
 }
@@ -176,14 +178,8 @@ void computePCA() {
     // Initialize PCA's A matrix
     int nVertices = _faceList[0].cols() * _faceList[0].rows();
 
-    _PCA_A.resize(nVertices, _faceList.size());
     computeMeanFace();
     computeDeviation();
-    // Add each face in the list as a vector to the PCA matrix
-    for(int i = 0; i < _faceList.size(); i++){
-        _PCA_A.col(i) = _faceListDeviation[i];
-    }
-
     // Compute selfadjoint covariance matrix for more stable eigen decomposition:
     // https://eigen.tuxfamily.org/dox/classEigen_1_1SelfAdjointEigenSolver.html
     _PCA_Covariance = _PCA_A.adjoint() * _PCA_A * (1.0 / _PCA_A.cols());
@@ -195,7 +191,7 @@ void computePCA() {
     MatrixXd decreasing(_PCA_A.rows(),eigenVectors.cols());
     for(int i = 0; i < eigenVectors.cols(); i++) {
         for(int j = 0; j < eigenVectors.rows(); j++) {
-            decreasing.col(i) += eigenVectors.col(i)(j) * _faceListDeviation[j];
+            decreasing.col(i) += eigenVectors.col(i)(j) * _PCA_A.col(j);
         }
     }
     decreasing.colwise().normalize();
