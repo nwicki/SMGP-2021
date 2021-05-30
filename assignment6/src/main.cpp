@@ -47,6 +47,12 @@ int _faceIndex;
 VectorXf _weightEigenFaces;
 // Columns hold weight per Eigen face #Eigen faces x #faces
 MatrixXd _weightEigenFacesPerFace;
+// Morph ID 1 / 2
+int _morphId1, _morphId2;
+// Morph factor
+float _morphLambda;
+// Morphed face
+MatrixXd _morphedFace;
 
 // Constant variables
 const string _dataExample1 = "../data/aligned_faces_example/example1/";
@@ -306,6 +312,10 @@ int pickVertex(int mouse_x, int mouse_y) {
 
 }
 
+void computeMorphedFace(){
+
+}
+
 bool callback_mouse_down(Viewer& viewer, int button, int modifier)
 {
     if (button == (int) Viewer::MouseButton::Right)
@@ -440,6 +450,32 @@ int main(int argc, char *argv[]) {
                 viewer.data().clear();
                 viewer.data().set_mesh(_meanFace + _faceOffsets[_faceIndex], F);
             }
+        }
+        ImGui::Separator();
+        ImGui::InputInt("Morph Face index 1", &_morphId1);
+        ImGui::InputInt("Morph Face index 2", &_morphId2);
+        ImGui::SliderFloat("Morphing Variable", &_morphLambda,0,1);
+        if (ImGui::Button("Show morphed face", ImVec2(-1,0))) {
+            if(_faceList.empty()) {
+                cout << "No faces loaded" << endl;
+            }
+            else {
+                if(_morphId1 < 0 || _faceList.size() <= _morphId1 || _morphId2 < 0 || _faceList.size() <= _morphId2) {
+                    if(_morphId1 < 0 || _faceList.size() <= _morphId1) {
+                        cout << "Morph Face index 1 out of bound" << endl;
+                    }
+                    if(_morphId2 < 0 || _faceList.size() <= _morphId2) {
+                        cout << "Morph Face index 2 out of bound" << endl;
+                    }
+                }
+                else {
+                    // computeMorphedFace();
+                    viewer.data().set_mesh(_meanFace + _morphLambda * _faceOffsets[_morphId2] + (1 - _morphLambda) * _faceOffsets[_morphId1], F);
+                }
+            }
+        }
+        if (ImGui::Button("testbittpm", ImVec2(-1,0))) {
+            cout << "test" << endl;
         }
         ImGui::End();
     };
