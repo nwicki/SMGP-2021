@@ -12,7 +12,6 @@
 #include <igl/opengl/glfw/Viewer.h>
 #include <igl/read_triangle_mesh.h>
 
-
 using namespace std;
 using namespace Eigen;
 using Viewer = igl::opengl::glfw::Viewer;
