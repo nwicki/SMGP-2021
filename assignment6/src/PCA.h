@@ -61,7 +61,6 @@ public:
 
     // Functions
     PCA() {
-        _currentData = *_dataExamples.begin();
         initializeParameters();
     }
     bool endsWith(const string& str, const string& suffix);
