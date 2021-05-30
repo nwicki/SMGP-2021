@@ -44,11 +44,13 @@ static int selected_face_id = 0;
 string face_folder_path = "../data/scanned_faces_cleaned/";
 
 vector<string> face_template_names;
-static int selected_template_id = 2;
+static int selected_template_id = 3;
 string tmpl_folder_path = "../data/face_template/";
 
 bool hide_scan_face = false;
+bool has_subdivided = false;
 float non_rigid_lambda = 1.0f;
+float non_rigid_epsilon = 0.01f;
 
 bool callback_mouse_down(Viewer &viewer, int button, int modifier) {
 
@@ -312,23 +314,60 @@ void draw_face_registration_window(ImGuiMenu &menu) {
         vector<LandmarkSelector::Landmark> landmarks_tmpl = landmarkSelector.get_landmarks_from_file(tmpl_file_path);
         MatrixXd P = landmarkSelector.get_landmarks_from_file(face_file_path, V, F);
         faceRegistor.build_octree(V);
-        faceRegistor.align_non_rigid_step(V_tmpl, F_tmpl, landmarks_tmpl, V, P, non_rigid_lambda);
+        faceRegistor.align_non_rigid_step(V_tmpl, F_tmpl, landmarks_tmpl, V, P, non_rigid_lambda, non_rigid_epsilon, !has_subdivided);
         set_mesh(V_tmpl, F_tmpl, 0);
         cout << "Align Non-Rigid" << endl;
     }
-
+    if (ImGui::Button("Register", ImVec2(-1, 0))) {
+        string tmpl_file_path = tmpl_folder_path + face_template_names[selected_template_id] + "_landmarks";
+        string face_file_path = face_folder_path + landmarked_face_names[selected_face_id] + "_landmarks";
+        vector<LandmarkSelector::Landmark> landmarks_tmpl = landmarkSelector.get_landmarks_from_file(tmpl_file_path);
+        MatrixXd P_tmpl = landmarkSelector.get_landmarks_from_file(tmpl_file_path, V_tmpl, F_tmpl);
+        MatrixXd P = landmarkSelector.get_landmarks_from_file(face_file_path, V, F);
+        faceRegistor.center_and_rescale_mesh(V, P);
+        faceRegistor.center_and_rescale_template(V_tmpl, P_tmpl, P);
+        P_tmpl = landmarkSelector.get_landmarks_from_file(tmpl_file_path, V_tmpl, F_tmpl);
+        P = landmarkSelector.get_landmarks_from_file(face_file_path, V, F);
+        faceRegistor.align_rigid(V_tmpl, P_tmpl, P);
+        set_mesh(V_tmpl, F_tmpl, 0);
+        set_mesh(V, F, 1);
+        faceRegistor.build_octree(V);
+        float lambda = 1.0f;
+        float epsilon = 0.01f;
+        faceRegistor.align_non_rigid_step(V_tmpl, F_tmpl, landmarks_tmpl, V, P, lambda, epsilon);
+        epsilon = 3.0f;
+        for(int i=0; i<6; i++){
+            faceRegistor.align_non_rigid_step(V_tmpl, F_tmpl, landmarks_tmpl, V, P, lambda, epsilon);
+        }
+        set_mesh(V_tmpl, F_tmpl, 0);
+        set_mesh(V, F, 1);
+        cout << "Register face" << endl;
+    }
+    if (ImGui::Button("Subdivide template", ImVec2(-1, 0))) {
+        faceRegistor.subdivide_template(V_tmpl, F_tmpl);
+        set_mesh(V_tmpl, F_tmpl, 0);
+        has_subdivided = true;
+        cout << "Subdivide template" << endl;
+    }
+    ImGui::PushItemWidth(0.4*menu_width);
     if (ImGui::InputFloat("lambda", &non_rigid_lambda))
     {
         non_rigid_lambda = std::max(0.0f, std::min(1000.0f, non_rigid_lambda));
     }
 
+    if (ImGui::InputFloat("epsilon", &non_rigid_epsilon))
+    {
+        non_rigid_epsilon = std::max(0.0f, std::min(1000.0f, non_rigid_epsilon));
+    }
+    ImGui::PopItemWidth();
+
     if (ImGui::Checkbox("Hide scan mesh", &hide_scan_face)) {
         viewer.data_list[1].show_faces = !hide_scan_face;
         viewer.data_list[1].show_lines = !hide_scan_face;
     }
-
+    ImGui::PushItemWidth(0.9*menu_width);
     ImGui::Text("Template Face");
-    if (ImGui::BeginCombo("Template Combo", &face_template_names[selected_template_id][0])) // The second parameter is the label previewed before opening the combo. 
+    if (ImGui::BeginCombo("", &face_template_names[selected_template_id][0])) // The second parameter is the label previewed before opening the combo. 
     {
         for (int n = 0; n < face_template_names.size(); n++)
         {
@@ -337,6 +376,7 @@ void draw_face_registration_window(ImGuiMenu &menu) {
                 selected_template_id = n;
                 string template_file_path = tmpl_folder_path + face_template_names[selected_template_id]+".obj";
                 load_mesh(template_file_path, V_tmpl, F_tmpl, 0);
+                has_subdivided = true;
             }
                 
             if (is_selected)
@@ -430,6 +470,7 @@ void fill_filenames(vector<string> &names,  string path, string extension) {
         if (fs::is_regular_file(file) && file.path().extension() == extension)
             names.emplace_back(file.path().stem().string());
     }
+    sort(names.begin(), names.end());
 }
 
 int main(int argc, char *argv[]) {

@@ -24,8 +24,10 @@ public:
 
     void align_rigid(MatrixXd &V_tmpl, const MatrixXd &P_tmpl, const MatrixXd &P);
 
-    void align_non_rigid_step(MatrixXd &V_tmpl, const MatrixXi &F_tmpl, const vector<LandmarkSelector::Landmark> &landmarks_tmpl, const MatrixXd &V, const MatrixXd &P, float lambda);
+    void align_non_rigid_step(MatrixXd &V_tmpl, const MatrixXi &F_tmpl, const vector<LandmarkSelector::Landmark> &landmarks_tmpl, const MatrixXd &V, const MatrixXd &P, float lambda, float epsilon, bool useLandmarks=true);
 
     void build_octree(const MatrixXd &V);
+
+    void subdivide_template(MatrixXd &V_tmpl, MatrixXi &F_tmpl);
 
 };
