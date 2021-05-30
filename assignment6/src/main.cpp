@@ -48,6 +48,8 @@ vector<string> face_template_names;
 static int selected_template_id = 3;
 string tmpl_folder_path = "../data/face_template/";
 
+string save_folder_path = "../data/aligned_faces/";
+
 bool hide_scan_face = false;
 bool has_subdivided = false;
 float non_rigid_lambda = 1.0f;
@@ -284,6 +286,7 @@ void draw_face_registration_window(ImGuiMenu &menu) {
 
     if (ImGui::Button("Center & Scale face", ImVec2(-1, 0))) {
         string face_file_path = face_folder_path + landmarked_face_names[selected_face_id] + "_landmarks.txt";
+        cout << face_file_path << endl;
         MatrixXd P = landmarkSelector.get_landmarks_from_file(face_file_path, V, F);
         faceRegistor.center_and_rescale_mesh(V, P);
         set_mesh(V, F, 1);
@@ -320,8 +323,8 @@ void draw_face_registration_window(ImGuiMenu &menu) {
         cout << "Align Non-Rigid" << endl;
     }
     if (ImGui::Button("Register", ImVec2(-1, 0))) {
-        string tmpl_file_path = tmpl_folder_path + face_template_names[selected_template_id] + "_landmarks";
-        string face_file_path = face_folder_path + landmarked_face_names[selected_face_id] + "_landmarks";
+        string tmpl_file_path = tmpl_folder_path + face_template_names[selected_template_id] + "_landmarks.txt";
+        string face_file_path = face_folder_path + landmarked_face_names[selected_face_id] + "_landmarks.txt";
         vector<LandmarkSelector::Landmark> landmarks_tmpl = landmarkSelector.get_landmarks_from_file(tmpl_file_path);
         MatrixXd P_tmpl = landmarkSelector.get_landmarks_from_file(tmpl_file_path, V_tmpl, F_tmpl);
         MatrixXd P = landmarkSelector.get_landmarks_from_file(face_file_path, V, F);
@@ -349,6 +352,11 @@ void draw_face_registration_window(ImGuiMenu &menu) {
         set_mesh(V_tmpl, F_tmpl, 0);
         has_subdivided = true;
         cout << "Subdivide template" << endl;
+    }
+    if (ImGui::Button("Save registered face", ImVec2(-1, 0))) {
+        string save_file_path = save_folder_path + landmarked_face_names[selected_face_id] + "_aligned.obj";
+        igl::writeOBJ(save_file_path, V_tmpl, F_tmpl);
+        cout << "Saved registered face to " << save_file_path << endl;
     }
     ImGui::PushItemWidth(0.4*menu_width);
     if (ImGui::InputFloat("lambda", &non_rigid_lambda))
