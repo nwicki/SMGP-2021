@@ -47,7 +47,7 @@ int _nEigenFaces = 10;
 string _currentData;
 // Face index chosen by user
 int _faceIndex;
-// Weights of the face displayed
+// Weights of the face displayed in [0,1]
 VectorXf _weightEigenFaces(0);
 // Columns hold weight per Eigen face #Eigen faces x #faces
 MatrixXd _weightEigenFacesPerFace(0,0);
@@ -127,12 +127,10 @@ bool endsWith(const string& str, const string& suffix) {
 
 void initializeParameters() {
     _weightEigenFaces.resize(_nEigenFaces);
-    _weightEigenFaces.setZero();
+    _weightEigenFaces.setOnes();
 }
 
 void loadFaces(Viewer& viewer, bool init) {
-    _weightEigenFaces.resize(_nEigenFaces);
-    _weightEigenFaces.setZero();
     if(!init) {
         string file = igl:: file_dialog_open();
         struct stat buffer;
@@ -303,8 +301,12 @@ void computeEigenFaceOffsetIndex() {
     }
     MatrixXd sum(_faceList[0].rows(),_faceList[0].cols());
     sum.setZero();
+    if(_faceIndex == -1) {
+        _faceOffset = sum;
+        return;
+    }
     for(int j = 0; j < _nEigenFaces; j++) {
-        MatrixXd weighted = _weightEigenFaces(j) * _eigenFaces.col(j);
+        MatrixXd weighted = _weightEigenFaces(j) * _weightEigenFacesPerFace(j,_faceIndex) * _eigenFaces.col(j);
         convert1Dto3D(weighted);
         sum += weighted;
     }
@@ -326,7 +328,7 @@ void showAverageFace(Viewer& viewer) {
     }
     else {
         _faceIndex = -1;
-        _weightEigenFaces.setZero();
+        _weightEigenFaces.setOnes();
         computeEigenFaceOffsetIndex();
         viewer.data().clear();
         viewer.data().set_mesh(_meanFace, F);
@@ -336,12 +338,7 @@ void showAverageFace(Viewer& viewer) {
 void updateWeightEigenFaces() {
     _weightEigenFaces.resize(_nEigenFaces);
     if(_faceIndex == -1) {
-        _weightEigenFaces.setZero();
-    }
-    else {
-        for(int i = 0; i < _nEigenFaces; i++) {
-            _weightEigenFaces(i) = _weightEigenFacesPerFace(i,_faceIndex);
-        }
+        _weightEigenFaces.setOnes();
     }
     computeEigenFaceOffsetIndex();
 }
@@ -360,6 +357,7 @@ void updateFaceIndex(Viewer& viewer) {
         cout << "No weights computed" << endl;
     }
     else {
+        _weightEigenFaces.setOnes();
         updateWeightEigenFaces();
     }
 }
@@ -508,7 +506,7 @@ int main(int argc, char *argv[]) {
         }
 
         for(int i = 0; i < _nEigenFaces; i++) {
-            if(ImGui::SliderFloat(("Eigen face " + to_string(i)).c_str(), &_weightEigenFaces(i),-1000.0,1000.0)) {
+            if(ImGui::SliderFloat(("Eigen face " + to_string(i)).c_str(), &_weightEigenFaces(i),0.0,1.0,"%.3f")) {
                 computeEigenFaceOffsetIndex();
                 viewer.data().clear();
                 viewer.data().set_mesh(_meanFace + _faceOffset, F);
@@ -523,6 +521,8 @@ int main(int argc, char *argv[]) {
             _morphIndex = min(max(0, _morphIndex), (int) (_faceList.size() - 1));
             showMorphedFace(viewer);
         }
+
+        ImGui::Text("Morphing faces %d and %d", _faceIndex, _morphIndex);
 
         if(ImGui::SliderFloat("Morphing Variable", &_morphLambda,0,1)) {
             showMorphedFace(viewer);
