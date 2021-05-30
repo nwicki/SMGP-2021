@@ -377,7 +377,7 @@ void draw_face_registration_window(ImGuiMenu &menu) {
         float epsilon = 0.01f;
         faceRegistor.align_non_rigid_step(V_tmpl, F_tmpl, landmarks_tmpl, V, P, lambda, epsilon);
         epsilon = 3.0f;
-        for(int i=0; i<6; i++){
+        for(int i=0; i<15; i++){
             faceRegistor.align_non_rigid_step(V_tmpl, F_tmpl, landmarks_tmpl, V, P, lambda, epsilon);
         }
         set_mesh(V_tmpl, F_tmpl, 0);
