@@ -32,9 +32,13 @@ LandmarkSelector landmarkSelector = LandmarkSelector();
 FaceRegistor faceRegistor = FaceRegistor();
 
 // Mesh Loading
+vector<string> landmark_folder_names = {"../data/face_template/", "../data/scanned_faces_cleaned/"};
+vector<vector<string>> landmark_filenames = vector<vector<string>>(2, vector<string>());
 string landmark_folder_path = "../data/face_template/";
 string landmark_filename = "headtemplate";
 string landmark_file_extension = ".obj";
+static int selected_landmark_folder_id = 0;
+static int selected_landmark_file_id = 0;
 
 // Face registration
 Eigen::MatrixXd V_tmpl(0, 3);
@@ -266,6 +270,39 @@ void draw_landmark_selection_window(ImGuiMenu &menu) {
         cout << "Delete All Landmarks" << endl;
     }
 
+    ImGui::PushItemWidth(0.9*menu_width);
+    ImGui::Text("Choose folder");
+    if (ImGui::BeginCombo("", &landmark_folder_names[selected_landmark_folder_id][0])) // The second parameter is the label previewed before opening the combo. 
+    {
+        for (int n = 0; n < landmark_folder_names.size(); n++)
+        {
+            bool is_selected = (selected_landmark_folder_id == n); // You can store your selection however you want, outside or inside your objects
+            if (ImGui::Selectable(&landmark_folder_names[n][0], is_selected)) {
+                selected_landmark_folder_id = n;
+                landmark_folder_path = landmark_folder_names[selected_landmark_folder_id];
+            }
+
+            if (is_selected)
+                ImGui::SetItemDefaultFocus();   // You may set the initial focus when opening the combo (scrolling + for keyboard navigation support)
+        }
+        ImGui::EndCombo();
+    }
+    ImGui::PopItemWidth();
+
+    ImGui::BeginChild("Faces", ImVec2(180, 400), true);
+    for (int i = 0; i < landmark_filenames[selected_landmark_folder_id].size(); i++) {
+        if (ImGui::Selectable(&landmark_filenames[selected_landmark_folder_id][i][0], selected_landmark_file_id == i)) {
+            selected_landmark_file_id = i;
+            landmark_filename = landmark_filenames[selected_landmark_folder_id][selected_landmark_file_id];
+            string face_file_path = landmark_folder_path + landmark_filename + landmark_file_extension;
+            load_mesh(face_file_path, V, F, 0);
+            landmarkSelector.current_landmarks.clear();
+        }
+    }
+    ImGui::EndChild();
+
+    
+
     ImGui::End();
 }
 
@@ -374,6 +411,7 @@ void draw_face_registration_window(ImGuiMenu &menu) {
         viewer.data_list[1].show_faces = !hide_scan_face;
         viewer.data_list[1].show_lines = !hide_scan_face;
     }
+
     ImGui::PushItemWidth(0.9*menu_width);
     ImGui::Text("Template Face");
     if (ImGui::BeginCombo("", &face_template_names[selected_template_id][0])) // The second parameter is the label previewed before opening the combo. 
@@ -393,6 +431,7 @@ void draw_face_registration_window(ImGuiMenu &menu) {
         }
         ImGui::EndCombo();
     }
+    ImGui::PopItemWidth();
 
     ImGui::Text("Face to register");
     ImGui::BeginChild("Faces", ImVec2(180, 400), true);
@@ -428,6 +467,13 @@ void draw_pca_computation_window(ImGuiMenu &menu) {
     ImGui::End();
 }
 
+void clear_all_data(){
+    for(size_t i=0; i<viewer.data_list.size(); i++){
+        viewer.selected_data_index = i;
+        viewer.data().clear();
+    } 
+}
+
 void setup_gui(ImGuiMenu &menu) {
     menu.callback_draw_viewer_window = [&](){};
     menu.callback_draw_custom_window = [&]()
@@ -440,13 +486,13 @@ void setup_gui(ImGuiMenu &menu) {
                 }
                 if (ImGui::MenuItem("Landmark Selection")) {
                     current_mode = 1;
-                    viewer.data().clear();
+                    clear_all_data();
                     string landmark_file_path = landmark_folder_path + landmark_filename + landmark_file_extension;
                     load_mesh(landmark_file_path);
                 }
                 if (ImGui::MenuItem("Face Registration")) {
                     current_mode = 2;
-                    viewer.data().clear();
+                    clear_all_data();
                     string template_file_path = tmpl_folder_path + face_template_names[selected_template_id]+".obj";
                     string face_file_path = face_folder_path + landmarked_face_names[selected_face_id]+".obj";
                     load_mesh(template_file_path, V_tmpl, F_tmpl, 0);
@@ -454,6 +500,7 @@ void setup_gui(ImGuiMenu &menu) {
                 }
                 if (ImGui::MenuItem("PCA Computation")) {
                     current_mode = 3;
+                    clear_all_data();
                 }
                 ImGui::EndMenu();
             }
@@ -497,6 +544,8 @@ int main(int argc, char *argv[]) {
     // face registration
     fill_filenames(landmarked_face_names, "../data/scanned_faces_cleaned/", ".obj");
     fill_filenames(face_template_names, "../data/face_template/", ".obj");
+    fill_filenames(landmark_filenames[0], "../data/face_template/", ".obj");
+    fill_filenames(landmark_filenames[1], "../data/scanned_faces_cleaned/", ".obj");
 
     viewer.callback_key_down = callback_key_down;
     viewer.callback_mouse_down = callback_mouse_down;
