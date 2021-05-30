@@ -517,12 +517,12 @@ int main(int argc, char *argv[]) {
             showEigenFaceOffset(viewer);
         }
 
-        if(ImGui::InputInt("Morph Face Index", &_morphIndex)) {
+        if(ImGui::InputInt("Morph face index", &_morphIndex)) {
             _morphIndex = min(max(0, _morphIndex), (int) (_faceList.size() - 1));
             showMorphedFace(viewer);
         }
 
-        ImGui::Text("Morphing faces %d and %d", _faceIndex, _morphIndex);
+        ImGui::Text("Morphing of the following indices: \nFace index: %d \nMorph face index: %d", _faceIndex, _morphIndex);
 
         if(ImGui::SliderFloat("Morphing Variable", &_morphLambda,0,1)) {
             showMorphedFace(viewer);
