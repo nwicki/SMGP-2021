@@ -21,6 +21,7 @@ Eigen::MatrixXi F;
 #include <string>
 #include <dirent.h>
 #include <set>
+#include <sys/stat.h>
 
 // Variables
 // List of faces already preprocessed for PCA
@@ -53,9 +54,11 @@ int _morphId1, _morphId2;
 float _morphLambda;
 
 // Constant variables
-const string _dataExample1 = "../data/aligned_faces_example/example1/";
-const string _dataExample2 = "../data/aligned_faces_example/example2/";
-const string _dataExample3 = "../data/aligned_faces_example/example3/";
+const set<string> _dataExamples = {
+        "../data/aligned_faces_example/example1/",
+        "../data/aligned_faces_example/example2/",
+        "../data/aligned_faces_example/example3/"
+};
 const string _fileEigenFaces = "eigenfaces.txt";
 const int _maxEigenFaces = 20;
 
@@ -123,7 +126,7 @@ void computeDeviation() {
 }
 
 void initializeParameters() {
-    _currentData = _dataExample1;
+    _currentData = *_dataExamples.begin();
     _weightEigenFaces.resize(_nEigenFaces);
     _weightEigenFaces.setZero();
 }
@@ -133,6 +136,10 @@ bool endsWith(const string& str, const string& suffix) {
 }
 
 void loadFaces() {
+    if(_dataExamples.find("../" + _currentData.substr(_currentData.length() - (*_dataExamples.begin()).length() + 3)) == _dataExamples.end()) {
+        cout << "No viable data set chosen: " << _currentData << endl;
+        return;
+    }
     cout << "Load faces from " << _currentData << endl;
     _faceFiles = set<string>();
     DIR *directory;
@@ -158,7 +165,7 @@ void loadFaces() {
     _faceList = vector<MatrixXd>(_faceFiles.size());
     int i = 0;
     for(auto it = _faceFiles.begin(); it != _faceFiles.end(); it++){
-        string file = _dataExample1 + *it;
+        string file = _currentData + *it;
         cout << "Read file: " << file << "\n";
         igl::read_triangle_mesh(file,vertices,faces);
         _faceList[i++] = vertices;
@@ -364,7 +371,12 @@ int main(int argc, char *argv[]) {
         ImGui::SetNextWindowPos(ImVec2(180.f * menu.menu_scaling(), 0), ImGuiCond_FirstUseEver);
         ImGui::Begin("PCA Menu", NULL, ImGuiWindowFlags_AlwaysAutoResize);
         if (ImGui::Button("Load faces", ImVec2(-1,0))) {
-            loadFaces();
+            string file = igl:: file_dialog_open();
+            struct stat buffer;
+            if(stat (file.c_str(), &buffer) == 0) {
+                _currentData = file.substr(0,file.find_last_of("/") + 1);
+                loadFaces();
+            }
         }
         if (ImGui::Button("Compute PCA (release mode only)", ImVec2(-1,0))) {
             computePCA();
