@@ -8,7 +8,7 @@
 #include "FaceRegistor.h"
 #include <boost/filesystem.hpp>
 #include <iostream>
-
+#include "PCA.h"
 
 using namespace std;
 using namespace Eigen;
@@ -43,6 +43,9 @@ static int selected_landmark_file_id = 0;
 // Face registration
 Eigen::MatrixXd V_tmpl(0, 3);
 Eigen::MatrixXi F_tmpl(0, 3);
+
+// PCA computation
+PCA *pca = new PCA();
 
 vector<string> landmarked_face_names;
 static int selected_face_id = 0;
@@ -451,18 +454,68 @@ void draw_pca_computation_window(ImGuiMenu &menu) {
     float menu_width = 200.f * menu.menu_scaling();
     ImGui::SetNextWindowPos(ImVec2(0.0f, 20.0f), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize(ImVec2(0.0f, 0.0f), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSizeConstraints(ImVec2(menu_width, -1.0f), ImVec2(menu_width, -1.0f));
+    //ImGui::SetNextWindowSizeConstraints(ImVec2(menu_width, -1.0f), ImVec2(menu_width, -1.0f));
     ImGui::Begin(
-        "PCA Computation", nullptr,
-        ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_AlwaysAutoResize |
-        ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse
+        "PCA Computation", nullptr,ImGuiWindowFlags_AlwaysAutoResize
     );
 
     draw_reduced_viewer_menu();
 
     ImGui::Separator();
 
-    // add pca computation menu options here
+    ImGui::SetNextItemWidth(-FLT_MIN);
+    if (ImGui::Combo("",&pca->_currentData,pca->_dataExamples.data(),pca->_dataExamples.size())) {
+        pca->loadFaces(viewer, F, false);
+    }
+
+    if (ImGui::Button("Show average face", ImVec2(-1,0))) {
+        pca->showAverageFace(viewer, F);
+    }
+
+    if(ImGui::InputInt("Face index", &pca->_faceIndex)) {
+        pca->updateFaceIndex(viewer, F);
+    }
+
+    if (ImGui::Button("Show face", ImVec2(-1,0))) {
+        pca->showFace(viewer, F);
+    }
+
+    ImGui::Separator();
+
+    if(ImGui::InputInt("#Eigen faces", &pca->_nEigenFaces)) {
+        pca->_nEigenFaces = min(max(1,pca->_nEigenFaces), pca->_maxEigenFaces);
+        pca->initializeParameters();
+        pca->recomputeAll();
+        pca->updateWeightEigenFaces();
+        pca->showEigenFaceOffset(viewer, F);
+    }
+
+    for(int i = 0; i < pca->_nEigenFaces; i++) {
+        if(ImGui::SliderFloat(("Eigen face " + to_string(i)).c_str(), &pca->_weightEigenFaces(i),0.0,1.0,"%.3f")) {
+            pca->computeEigenFaceOffsetIndex();
+            viewer.data().clear();
+            viewer.data().set_mesh(pca->_meanFace + pca->_faceOffset, F);
+        }
+    }
+
+    if (ImGui::Button("Show face with Eigen face offsets", ImVec2(-1,0))) {
+        pca->showEigenFaceOffset(viewer, F);
+    }
+
+    if(ImGui::InputInt("Morph face index", &pca->_morphIndex)) {
+        pca->_morphIndex = min(max(0, pca->_morphIndex), (int) (pca->_faceList.size() - 1));
+        pca->showMorphedFace(viewer, F);
+    }
+
+    ImGui::Text("Morphing of the following indices: \nFace index: %d \nMorph face index: %d", pca->_faceIndex, pca->_morphIndex);
+
+    if(ImGui::SliderFloat("Morph rate", &pca->_morphLambda,0,1)) {
+        pca->showMorphedFace(viewer, F);
+    }
+
+    if (ImGui::Button("Show morphed face", ImVec2(-1,0))) {
+        pca->showMorphedFace(viewer, F);
+    }
 
     ImGui::End();
 }
@@ -552,6 +605,9 @@ int main(int argc, char *argv[]) {
 
     viewer.data().point_size = 15;
     viewer.core.set_rotation_type(igl::opengl::ViewerCore::ROTATION_TYPE_TRACKBALL);
+    // Moves face to look towards camera
+    igl::trackball(viewer.core.viewport(2),viewer.core.viewport(3),2.0f,viewer.down_rotation,0.0,0.0,0.0,2.5,viewer.core.trackball_angle);
+    viewer.snap_to_canonical_quaternion();
     viewer.launch();
 
     return 0;
