@@ -12,9 +12,9 @@ using Viewer = igl::opengl::glfw::Viewer;
 Viewer viewer;
 
 //vertex array, #V x3
-Eigen::MatrixXd V;
+Eigen::MatrixXd V(0,0);
 //face array, #F x3
-Eigen::MatrixXi F;
+Eigen::MatrixXi F(0,0);
 
 // PCA environment
 // Includes
@@ -31,13 +31,13 @@ vector<MatrixXd> _faceListDeviation;
 
 vector<MatrixXd> _faceOffsets;
 // cov = A * A^T
-MatrixXd _PCA_A;
+MatrixXd _PCA_A(0,0);
 // Covariance matrix for Eigen decomposition
-MatrixXd _PCA_Covariance;
+MatrixXd _PCA_Covariance(0,0);
 // Average face
-MatrixXd _meanFace;
+MatrixXd _meanFace(0,0);
 // Eigen faces #3*vertices x #faces
-MatrixXd _eigenFaces;
+MatrixXd _eigenFaces(0,0);
 // Amount of Eigen faces considered
 int _nEigenFaces = 10;
 // Data folder
@@ -45,13 +45,21 @@ string _currentData;
 // Face index chosen by user
 int _faceIndex;
 // Weights of the face displayed
-VectorXf _weightEigenFaces;
+VectorXf _weightEigenFaces(0);
 // Columns hold weight per Eigen face #Eigen faces x #faces
-MatrixXd _weightEigenFacesPerFace;
+MatrixXd _weightEigenFacesPerFace(0,0);
 // Morph ID 1 / 2
 int _morphId1, _morphId2;
 // Morph factor
 float _morphLambda;
+
+// Booleans to reduce recomputation
+bool _recomputeMeanFace = false;
+bool _recomputeDeviation = false;
+bool _recomputePCA = false;
+bool _recomputeEigenFaceWeights = false;
+bool _recomputeEigenFaceOffsets = false;
+
 
 // Constant variables
 const set<string> _dataExamples = {
@@ -65,13 +73,51 @@ const int _maxEigenFaces = 20;
 // Check variables
 
 // Functions
-void loadFaces();
 void storeEigenFaces();
 void loadEigenFaces();
-void computeMeanFace();
-void initializeParameters();
+bool endsWith(const string& str, const string& suffix);
 void convert3Dto1D(MatrixXd& m);
+void convert1Dto3D(MatrixXd& m);
+void initializeParameters();
+void loadFaces();
+void computeMeanFace();
 void computeDeviation();
+void computePCA();
+void computeEigenFaceWeights();
+void computeEigenFaceOffsets();
+void computeEigenFaceOffsetsIndex();
+
+void storeEigenFaces() {
+    string filePath = _currentData + _fileEigenFaces;
+    cout << "Storing " << _maxEigenFaces << " eigen faces in: " << filePath << endl;
+    ofstream file(_currentData + _fileEigenFaces);
+    for(int i = 0; i < _maxEigenFaces; i++) {
+        file << _eigenFaces.col(i).transpose() << endl;
+    }
+    file.close();
+    cout << endl;
+}
+
+void loadEigenFaces() {
+    string filePath = _currentData + _fileEigenFaces;
+    cout << "Loading " << _maxEigenFaces << " eigen faces from: " << filePath << endl;
+    ifstream file(filePath);
+    vector<vector<double>> eigenFaces;
+    double a;
+    string row;
+    while(getline(file, row)) {
+        istringstream rowStream(row);
+        eigenFaces.push_back(vector<double>());
+        while(rowStream >> a) {
+            eigenFaces.back().push_back(a);
+        }
+    }
+    _eigenFaces.resize(eigenFaces[0].size(), eigenFaces.size());
+    for(int i = 0; i < _eigenFaces.cols(); i++) {
+        _eigenFaces.col(i) = VectorXd::Map(eigenFaces[i].data(), eigenFaces[i].size());
+    }
+    cout << endl;
+}
 
 void convert3Dto1D(MatrixXd& m) {
     if(m.cols() != 3) {
@@ -107,38 +153,28 @@ void convert1Dto3D(MatrixXd& m) {
     }
 }
 
-void computeDeviation() {
-    if(_faceList.empty()) {
-        cout << "No faces loaded" << endl;
-        return;
-    }
-    cout << "Compute deviation to mean face for each face" << endl;
-    computeMeanFace();
-    _faceListDeviation = vector<MatrixXd>(_faceList.size());
-    _PCA_A.resize(_faceList[0].cols() * _faceList[0].rows(), _faceList.size());
-    for(int i = 0; i < _faceList.size(); i++) {
-        MatrixXd diff = _faceList[i] - _meanFace;
-        _faceListDeviation[i] = diff;
-        convert3Dto1D(diff);
-        _PCA_A.col(i) = diff;
-    }
-    cout << endl;
-}
-
-void initializeParameters() {
-    _currentData = *_dataExamples.begin();
-    _weightEigenFaces.resize(_nEigenFaces);
-    _weightEigenFaces.setZero();
-}
-
 bool endsWith(const string& str, const string& suffix) {
     return str.size() >= suffix.size() && 0 == str.compare(str.size()-suffix.size(), suffix.size(), suffix);
 }
 
+void initializeParameters() {
+    _weightEigenFaces.resize(_nEigenFaces);
+    _weightEigenFaces.setZero();
+    _recomputeMeanFace = true;
+    _recomputeDeviation = true;
+    _recomputePCA = true;
+    _recomputeEigenFaceWeights = true;
+    _recomputeEigenFaceOffsets = true;
+}
+
 void loadFaces() {
-    if(_dataExamples.find("../" + _currentData.substr(_currentData.length() - (*_dataExamples.begin()).length() + 3)) == _dataExamples.end()) {
-        cout << "No viable data set chosen: " << _currentData << endl;
-        return;
+    if(_dataExamples.find(_currentData) == _dataExamples.end()) {
+        // Get file path into relational format
+        _currentData = "../" + _currentData.substr(_currentData.length() - (*_dataExamples.begin()).length() + 3);
+        if(_dataExamples.find(_currentData) == _dataExamples.end()) {
+            cout << "No viable data set chosen: " << _currentData << endl;
+            return;
+        }
     }
     cout << "Load faces from " << _currentData << endl;
     _faceFiles = set<string>();
@@ -171,22 +207,63 @@ void loadFaces() {
         _faceList[i++] = vertices;
     }
     F = faces;
+    initializeParameters();
     cout << endl;
 }
 
-void computePCA() {
+void computeMeanFace() {
+    if(!_recomputeMeanFace) {
+        return;
+    }
     if(_faceList.empty()) {
         cout << "No faces loaded" << endl;
         return;
     }
-    cout << "Compute PCA of faces in " << _currentData << endl;
+    cout << "Compute mean face" << endl;
+    MatrixXd sum = _faceList[0];
+    for(int i = 1; i < _faceList.size(); i++) {
+        sum += _faceList[i];
+    }
+    _meanFace = sum / _faceList.size();
+    _recomputeMeanFace = false;
+    cout << endl;
+}
+
+void computeDeviation() {
+    if(!_recomputeDeviation) {
+        return;
+    }
+    if(_faceList.empty()) {
+        cout << "No faces loaded" << endl;
+        return;
+    }
+    cout << "Compute deviation to mean face for each face" << endl;
+    _faceListDeviation = vector<MatrixXd>(_faceList.size());
+    _PCA_A.resize(_faceList[0].cols() * _faceList[0].rows(), _faceList.size());
+    for(int i = 0; i < _faceList.size(); i++) {
+        MatrixXd diff = _faceList[i] - _meanFace;
+        _faceListDeviation[i] = diff;
+        convert3Dto1D(diff);
+        _PCA_A.col(i) = diff;
+    }
+    _recomputeDeviation = false;
+    cout << endl;
+}
+
+void computePCA() {
+    if(!_recomputePCA) {
+        return;
+    }
+    if(_faceList.empty()) {
+        cout << "No faces loaded" << endl;
+        return;
+    }
+    cout << "Compute PCA of faces" << endl;
     // Measure runtime
     auto start = chrono::high_resolution_clock::now();
     // Initialize PCA's A matrix
     int nVertices = _faceList[0].cols() * _faceList[0].rows();
 
-    computeMeanFace();
-    computeDeviation();
     // Compute selfadjoint covariance matrix for more stable eigen decomposition:
     // https://eigen.tuxfamily.org/dox/classEigen_1_1SelfAdjointEigenSolver.html
     _PCA_Covariance = _PCA_A.adjoint() * _PCA_A * (1.0 / _PCA_A.cols());
@@ -210,52 +287,15 @@ void computePCA() {
     // Result runtime
     auto end = chrono::high_resolution_clock::now();
     cout << "PCA execution time: " << chrono::duration_cast<chrono::milliseconds> (end-start).count() << " ms" << endl;
-    // Save computed eigen faces for later usage
-    storeEigenFaces();
+    // PCA for current faces computed
+    _recomputePCA = false;
     cout << endl;
-}
-
-void storeEigenFaces() {
-    string filePath = _currentData + _fileEigenFaces;
-    cout << "Storing " << _maxEigenFaces << " eigen faces in: " << filePath << endl;
-    ofstream file(_currentData + _fileEigenFaces);
-    for(int i = 0; i < _maxEigenFaces; i++) {
-        file << _eigenFaces.col(i).transpose() << endl;
-    }
-    file.close();
-    cout << endl;
-}
-
-void loadEigenFaces() {
-    string filePath = _currentData + _fileEigenFaces;
-    cout << "Loading " << _maxEigenFaces << " eigen faces from: " << filePath << endl;
-    ifstream file(filePath);
-    vector<vector<double>> eigenFaces;
-    double a;
-    string row;
-    while(getline(file, row)) {
-        istringstream rowStream(row);
-        eigenFaces.push_back(vector<double>());
-        while(rowStream >> a) {
-            eigenFaces.back().push_back(a);
-        }
-    }
-    _eigenFaces.resize(eigenFaces[0].size(), eigenFaces.size());
-    for(int i = 0; i < _eigenFaces.cols(); i++) {
-        _eigenFaces.col(i) = VectorXd::Map(eigenFaces[i].data(), eigenFaces[i].size());
-    }
-    cout << endl;
-}
-
-void computeMeanFace() {
-    MatrixXd sum = _faceList[0];
-    for(int i = 1; i < _faceList.size(); i++) {
-        sum += _faceList[i];
-    }
-    _meanFace = sum / _faceList.size();
 }
 
 void computeEigenFaceWeights() {
+    if(!_recomputeEigenFaceWeights) {
+        return;
+    }
     if(_eigenFaces.size() < _nEigenFaces) {
         cout << "Not enough eigen faces available" << endl;
         return;
@@ -264,8 +304,6 @@ void computeEigenFaceWeights() {
         cout << "No faces loaded" << endl;
         return;
     }
-    computeMeanFace();
-    computeDeviation();
     cout << "Compute weights for each face and corresponding Eigenfaces" << endl;
     _weightEigenFacesPerFace.resize(_nEigenFaces,_faceList.size());
     for(int i = 0; i < _faceList.size(); i++) {
@@ -273,12 +311,18 @@ void computeEigenFaceWeights() {
             _weightEigenFacesPerFace(j,i) = _PCA_A.col(i).dot(_eigenFaces.col(j));
         }
     }
+    // Eigen face weights for current faces computed
+    _recomputeEigenFaceWeights = false;
     cout << endl;
 }
 
 void computeEigenFaceOffsets() {
+    if(!_recomputeEigenFaceOffsets) {
+        return;
+    }
     if(_weightEigenFacesPerFace.size() < _faceList.size()) {
         cout << "Not enough weights available" << endl;
+        return;
     }
     cout << "Compute eigen face offsets" << endl;
     _faceOffsets = vector<MatrixXd>(_faceList.size());
@@ -292,7 +336,23 @@ void computeEigenFaceOffsets() {
         }
         _faceOffsets[i] = sum;
     }
+    _recomputeEigenFaceOffsets = false;
     cout << endl;
+}
+
+void computeEigenFaceOffsetsIndex() {
+    if(_weightEigenFacesPerFace.size() < _faceList.size()) {
+        cout << "Not enough weights available" << endl;
+        return;
+    }
+    MatrixXd sum(_faceList[_faceIndex].rows(),_faceList[_faceIndex].cols());
+    sum.setZero();
+    for(int j = 0; j < _nEigenFaces; j++) {
+        MatrixXd weighted = _weightEigenFacesPerFace(j,_faceIndex) * _eigenFaces.col(j);
+        convert1Dto3D(weighted);
+        sum += weighted;
+    }
+    _faceOffsets[_faceIndex] = sum;
 }
 
 int pickVertex(int mouse_x, int mouse_y) {
@@ -341,15 +401,16 @@ bool load_mesh(string filename) {
     return true;
 }
 
-
 int main(int argc, char *argv[]) {
     if(argc != 2) {
-        load_mesh("../data/aligned_faces_example/example2/alain_normal.obj");
+        load_mesh("../data/aligned_faces_example/example1/fabian-brille.objaligned.obj");
     } else {
         load_mesh(argv[1]);
     }
-
-    initializeParameters();
+    _currentData = *_dataExamples.begin();
+    _weightEigenFaces.resize(_nEigenFaces);
+    _weightEigenFaces.setZero();
+    loadFaces();
 
     igl::opengl::glfw::imgui::ImGuiMenu menu;
     viewer.plugins.push_back(&menu);
@@ -368,8 +429,14 @@ int main(int argc, char *argv[]) {
     };
 
     menu.callback_draw_custom_window = [&]() {
+        computeMeanFace();
+        computeDeviation();
+        computePCA();
+        computeEigenFaceWeights();
+        computeEigenFaceOffsets();
         ImGui::SetNextWindowPos(ImVec2(180.f * menu.menu_scaling(), 0), ImGuiCond_FirstUseEver);
         ImGui::Begin("PCA Menu", NULL, ImGuiWindowFlags_AlwaysAutoResize);
+        ImGui::Text("Data set: %s",_currentData.c_str());
         if (ImGui::Button("Load faces", ImVec2(-1,0))) {
             string file = igl:: file_dialog_open();
             struct stat buffer;
@@ -378,41 +445,10 @@ int main(int argc, char *argv[]) {
                 loadFaces();
             }
         }
-        if (ImGui::Button("Compute PCA (release mode only)", ImVec2(-1,0))) {
-            computePCA();
-        }
-
-        if (ImGui::Button("Load Eigen faces", ImVec2(-1,0))) {
-            loadEigenFaces();
-        }
-
-        ImGui::InputInt("Face index", &_faceIndex);
-
-        if (ImGui::Button("Show face", ImVec2(-1,0))) {
-            if(_faceList.empty()) {
-                cout << "No faces loaded" << endl;
-            }
-            else {
-                if(_faceIndex < 0 || _faceList.size() <= _faceIndex) {
-                    cout << "Face index out of bound" << endl;
-                }
-                else {
-                    viewer.data().clear();
-                    viewer.data().set_mesh(_faceList[_faceIndex], F);
-                }
-            }
-        }
 
         if (ImGui::Button("Show average face", ImVec2(-1,0))) {
             if(_meanFace.rows() == 0) {
-                if(_faceList.empty()) {
-                    cout << "No faces loaded" << endl;
-                }
-                else {
-                    computeMeanFace();
-                    viewer.data().clear();
-                    viewer.data().set_mesh(_meanFace, F);
-                }
+                cout << "No mean face computed" << endl;
             }
             else {
                 viewer.data().clear();
@@ -420,75 +456,94 @@ int main(int argc, char *argv[]) {
             }
         }
 
-        if (ImGui::Button("Compute face weights", ImVec2(-1,0))) {
-            computeEigenFaceWeights();
-        }
+        if(ImGui::InputInt("Face index", &_faceIndex)) {
+            _faceIndex = min(max(0,_faceIndex),(int) (_faceList.size() - 1));
+            if(_faceList.empty()) {
+                cout << "No faces loaded" << endl;
+            }
+            else {
+                viewer.data().clear();
+                viewer.data().set_mesh(_faceList[_faceIndex], F);
+            }
 
-        if (ImGui::Button("Set face weights", ImVec2(-1,0))) {
             if(_weightEigenFacesPerFace.rows() == 0) {
                 cout << "No weights computed" << endl;
             }
             else {
                 _weightEigenFaces.resize(_nEigenFaces);
                 for(int i = 0; i < _nEigenFaces; i++) {
-                    _weightEigenFaces(i) = _weightEigenFacesPerFace(_faceIndex,i);
+                    _weightEigenFaces(i) = _weightEigenFacesPerFace(i,_faceIndex);
                 }
             }
         }
 
-        for(int i = 0; i < _nEigenFaces; i++) {
-            ImGui::SliderFloat(("Eigen face " + to_string(i)).c_str(), &_weightEigenFaces(i),-20.0,20.0);
-        }
-
-        if (ImGui::Button("Compute Eigen face offset", ImVec2(-1,0))) {
-            computeEigenFaceOffsets();
+        if (ImGui::Button("Show face", ImVec2(-1,0))) {
+            if(_faceList.empty()) {
+                cout << "No faces loaded" << endl;
+            }
+            else {
+                viewer.data().clear();
+                viewer.data().set_mesh(_faceList[_faceIndex], F);
+            }
         }
 
         if (ImGui::Button("Show face with Eigen face offsets", ImVec2(-1,0))) {
             if(_faceOffsets.empty()) {
                 cout << "No faces with Eigen offsets computed" << endl;
             }
+            else if(_meanFace.rows() == 0) {
+                cout << "No mean face computed" << endl;
+            }
             else {
                 viewer.data().clear();
                 viewer.data().set_mesh(_meanFace + _faceOffsets[_faceIndex], F);
             }
         }
-        ImGui::Separator();
-        ImGui::InputInt("Morph Face index 1", &_morphId1);
-        ImGui::InputInt("Morph Face index 2", &_morphId2);
-        ImGui::SliderFloat("Morphing Variable", &_morphLambda,0,1);
+
         if (ImGui::Button("Show morphed face", ImVec2(-1,0))) {
-            try
-            {
-                if(_faceList.empty()) {
-                    cout << "No faces loaded" << endl;
-                }
-                else {
-                    if(_morphId1 < 0 || _faceList.size() <= _morphId1 || _morphId2 < 0 || _faceList.size() <= _morphId2) {
-                        if(_morphId1 < 0 || _faceList.size() <= _morphId1) {
-                            cout << "Morph Face index 1 out of bound" << endl;
-                        }
-                        if(_morphId2 < 0 || _faceList.size() <= _morphId2) {
-                            cout << "Morph Face index 2 out of bound" << endl;
-                        }
-                    }
-                    else {
-                        // computeMorphedFace();
-                        viewer.data().set_mesh(_meanFace + _morphLambda * _faceOffsets[_morphId2] + (1 - _morphLambda) * _faceOffsets[_morphId1], F);
-                    }
-                }
+            if(_faceList.empty()) {
+                cout << "No faces loaded" << endl;
             }
-            catch(const std::exception& e)
-            {
-                std::cerr << "mean face or offsets not computed yet" << '\n';
+            else if(_meanFace.rows() == 0) {
+                cout << "No mean face computed" << endl;
+            }
+            else if(_faceOffsets.empty()) {
+                cout << "No faces with Eigen offsets computed" << endl;
+            }
+            else {
+                viewer.data().set_mesh(_meanFace + _morphLambda * _faceOffsets[_morphId2] + (1 - _morphLambda) * _faceOffsets[_morphId1], F);
             }
         }
+
+        ImGui::Separator();
+
+        for(int i = 0; i < _nEigenFaces; i++) {
+            if(ImGui::SliderFloat(("Eigen face " + to_string(i)).c_str(), &_weightEigenFaces(i),-200.0,200.0)) {
+                _weightEigenFacesPerFace(i,_faceIndex) = _weightEigenFaces(i);
+                computeEigenFaceOffsetsIndex();
+                viewer.data().clear();
+                viewer.data().set_mesh(_meanFace + _faceOffsets[_faceIndex], F);
+            }
+        }
+
+        ImGui::Separator();
+        if(ImGui::InputInt("Morph Face index 1", &_morphId1)) {
+            _morphId1 = min(max(0, _morphId1), (int) (_faceList.size() - 1));
+        }
+        if(ImGui::InputInt("Morph Face index 2", &_morphId2)) {
+            _morphId2 = min(max(0, _morphId2), (int) (_faceList.size() - 1));
+        }
+        ImGui::SliderFloat("Morphing Variable", &_morphLambda,0,1);
         ImGui::End();
     };
 
     viewer.callback_key_down = callback_key_down;
     viewer.data().point_size = 10;
     viewer.core.set_rotation_type(igl::opengl::ViewerCore::ROTATION_TYPE_TRACKBALL);
+    viewer.data().show_lines = false;
+    // Moves face to look towards camera
+    igl::trackball(viewer.core.viewport(2),viewer.core.viewport(3),2.0f,viewer.down_rotation,0.0,0.0,0.0,2.5,viewer.core.trackball_angle);
+    viewer.snap_to_canonical_quaternion();
     viewer.launch();
 
     return 0;
