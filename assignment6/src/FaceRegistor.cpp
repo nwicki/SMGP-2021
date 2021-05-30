@@ -108,6 +108,11 @@ void FaceRegistor::align_non_rigid_step(MatrixXd &V_tmpl, const MatrixXi &F_tmpl
     }
     cout << "whole matrix set up done: A: " << A.rows() << " x " << A.cols() << " b: " << b.rows() << " x " << b.cols() << endl;
 
+    // Enabling parallelism (set #cores apart from flag -fopenmp)
+    int ncores = thread::hardware_concurrency();
+    omp_set_num_threads(ncores);
+    setNbThreads(ncores);
+
     // Solve system
     LeastSquaresConjugateGradient<SparseMatrix<double> > solver;
     solver.compute(A);
