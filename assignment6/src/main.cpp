@@ -6,8 +6,10 @@
 #include <string>
 #include "LandmarkSelector.h"
 #include "FaceRegistor.h"
-#include <boost/filesystem.hpp> 
+#include <boost/filesystem.hpp>
 #include <iostream>
+#include <string>
+#include "LandmarkSelector.cpp"
 
 using namespace std;
 using namespace Eigen;
@@ -83,7 +85,7 @@ bool set_mesh(const Eigen::MatrixXd& _V, const Eigen::MatrixXi& _F, int id = 0) 
         viewer.selected_data_index = id;
         viewer.data().clear();
         viewer.data().set_mesh(_V, _F);
-    } 
+    }
 
     viewer.core.align_camera_center(_V);
     return true;
@@ -107,7 +109,7 @@ void draw_full_viewer_window(ImGuiMenu &menu) {
         ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse
     );
     ImGui::PushItemWidth(ImGui::GetWindowWidth() * 0.4f);
-    
+
     // Viewing options
     if (ImGui::CollapsingHeader("Viewing Options", ImGuiTreeNodeFlags_DefaultOpen))
     {
@@ -229,7 +231,7 @@ void draw_landmark_selection_window(ImGuiMenu &menu) {
     }
 
     if (ImGui::Button("Save Landmarks", ImVec2(-1, 0))) {
-        string file_path = landmark_folder_path + landmark_filename + "_landmarks";
+        string file_path = landmark_folder_path + landmark_filename + "_landmarks.txt";
         landmarkSelector.save_landmarks_to_file(landmarkSelector.current_landmarks, file_path);
         cout << landmarkSelector.current_landmarks.size() << " landmarks saved to " << file_path << endl;
     }
@@ -241,7 +243,7 @@ void draw_landmark_selection_window(ImGuiMenu &menu) {
     }
 
     if (ImGui::Button("Load Landmarks", ImVec2(-1, 0))) {
-        string file_path = landmark_folder_path + landmark_filename + "_landmarks";
+        string file_path = landmark_folder_path + landmark_filename + "_landmarks.txt";
         landmarkSelector.current_landmarks = landmarkSelector.get_landmarks_from_file(file_path);
         cout << landmarkSelector.current_landmarks.size() << " landmarks loaded from " << file_path << endl;
     }
@@ -328,7 +330,7 @@ void draw_face_registration_window(ImGuiMenu &menu) {
     }
 
     ImGui::Text("Template Face");
-    if (ImGui::BeginCombo("Template Combo", &face_template_names[selected_template_id][0])) // The second parameter is the label previewed before opening the combo. 
+    if (ImGui::BeginCombo("Template Combo", &face_template_names[selected_template_id][0])) // The second parameter is the label previewed before opening the combo.
     {
         for (int n = 0; n < face_template_names.size(); n++)
         {
@@ -338,7 +340,7 @@ void draw_face_registration_window(ImGuiMenu &menu) {
                 string template_file_path = tmpl_folder_path + face_template_names[selected_template_id]+".obj";
                 load_mesh(template_file_path, V_tmpl, F_tmpl, 0);
             }
-                
+
             if (is_selected)
                 ImGui::SetItemDefaultFocus();   // You may set the initial focus when opening the combo (scrolling + for keyboard navigation support)
         }
@@ -352,7 +354,7 @@ void draw_face_registration_window(ImGuiMenu &menu) {
             selected_face_id = i;
             string face_file_path = face_folder_path + landmarked_face_names[selected_face_id]+".obj";
             load_mesh(face_file_path, V, F, 1);
-        }    
+        }
     }
     ImGui::EndChild();
 
@@ -373,8 +375,8 @@ void draw_pca_computation_window(ImGuiMenu &menu) {
     draw_reduced_viewer_menu();
 
     ImGui::Separator();
-    
-    // add pca computation menu options here 
+
+    // add pca computation menu options here
 
     ImGui::End();
 }
@@ -447,7 +449,7 @@ int main(int argc, char *argv[]) {
     // face registration
     fill_filenames(landmarked_face_names, "../data/scanned_faces_cleaned/", ".obj");
     fill_filenames(face_template_names, "../data/face_template/", ".obj");
-    
+
     viewer.callback_key_down = callback_key_down;
     viewer.callback_mouse_down = callback_mouse_down;
 
