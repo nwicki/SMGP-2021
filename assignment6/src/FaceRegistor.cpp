@@ -32,13 +32,14 @@ void FaceRegistor::center_and_rescale_template(MatrixXd &V_tmpl, const MatrixXd 
     center_and_rescale_mesh(V_tmpl, P_tmpl, factor);
 }
 
-void FaceRegistor::align_rigid(MatrixXd &V_tmpl, const MatrixXd &P_tmpl, const MatrixXd &P) {
+Matrix3d FaceRegistor::align_rigid(MatrixXd &V_tmpl, const MatrixXd &P_tmpl, const MatrixXd &P) {
     Matrix3d H = P_tmpl.transpose() * P; // both need to be centered first!
     Matrix3d U, V, R;
     Vector3d S;
     igl::svd3x3(H, U, S, V); // with this implementation, we know det U = det V = 1
     R = V * U.transpose();
     V_tmpl = V_tmpl * R.transpose();
+    return R;
 }
 
 void FaceRegistor::align_non_rigid_step(MatrixXd &V_tmpl, const MatrixXi &F_tmpl, const vector<LandmarkSelector::Landmark> &landmarks_tmpl, const MatrixXd &V, const MatrixXd &P, float lambda, float epsilon, bool useLandmarks) {
@@ -46,7 +47,7 @@ void FaceRegistor::align_non_rigid_step(MatrixXd &V_tmpl, const MatrixXi &F_tmpl
     SparseMatrix<double> Laplacian;
     igl::cotmatrix(V_tmpl, F_tmpl, Laplacian);
     MatrixXd Lx = Laplacian * V_tmpl;
-    cout << "Laplacian matrix done: L: " << Laplacian.rows() << " x " << Laplacian.cols() << " Lx: " << Lx.rows() << " x " << Lx.cols() << endl;
+    //cout << "Laplacian matrix done: L: " << Laplacian.rows() << " x " << Laplacian.cols() << " Lx: " << Lx.rows() << " x " << Lx.cols() << endl;
 
     // Boundary constraints
     SparseMatrix<double> Csb; // Csb = boundary constraints (original)
@@ -59,7 +60,7 @@ void FaceRegistor::align_non_rigid_step(MatrixXd &V_tmpl, const MatrixXi &F_tmpl
     igl::slice(V_tmpl, Bi, 1, Cwsb);
     MatrixXi Bi_mask = MatrixXi::Ones(V_tmpl.rows(), 1);
     igl::slice_into(MatrixXi::Zero(Bi.rows(), 1), Bi, 1, Bi_mask);
-    cout << "boundary constraints done: Csb: " << Csb.rows() << " x " << Csb.cols() << " Cwsb: " << Cwsb.rows() << " x " << Cwsb.cols() << endl;
+    //cout << "boundary constraints done: Csb: " << Csb.rows() << " x " << Csb.cols() << " Cwsb: " << Cwsb.rows() << " x " << Cwsb.cols() << endl;
 
     // Target landmarks constraints
     SparseMatrix<double> Csl(23, V_tmpl.rows()); // Csl = landmark constraints (target)
@@ -76,7 +77,7 @@ void FaceRegistor::align_non_rigid_step(MatrixXd &V_tmpl, const MatrixXi &F_tmpl
         index++;
     }
     Csl.setFromTriplets(tripletList.begin(), tripletList.end());
-    cout << "landmarks constraints done: Csl: " << Csl.rows() << " x " << Csl.cols() << " Cwsl: " << Cwsl.rows() << " x " << Cwsl.cols() << endl;
+    //cout << "landmarks constraints done: Csl: " << Csl.rows() << " x " << Csl.cols() << " Cwsl: " << Cwsl.rows() << " x " << Cwsl.cols() << endl;
 
     // Query dynamic constraints (close to target face)
     double scale = (V_tmpl.colwise().maxCoeff() - V_tmpl.colwise().minCoeff()).norm();
@@ -95,7 +96,7 @@ void FaceRegistor::align_non_rigid_step(MatrixXd &V_tmpl, const MatrixXi &F_tmpl
     Array<bool, Dynamic, 1> c_mask = ((V_tmpl - C).rowwise().norm().array() < epsilon) * (Bi_mask.cast<bool>().array());
     igl::slice_mask(C, c_mask, 1, Cwd);
     igl::slice_mask(Id, c_mask, 1, Cd);
-    cout << "dynamic constraints done: Cd: " << Cd.rows() << " x " << Cd.cols() << " Cwd: " << Cwd.rows() << " x " << Cwd.cols() << endl;
+    //cout << "dynamic constraints done: Cd: " << Cd.rows() << " x " << Cd.cols() << " Cwd: " << Cwd.rows() << " x " << Cwd.cols() << endl;
 
     // Set up whole matrix and right hand side
     SparseMatrix<double> Snd = useLandmarks? lambda * igl::cat(1, Csb, igl::cat(1, Csl, Cd)) : lambda * igl::cat(1, Csb, Cd);
@@ -106,24 +107,24 @@ void FaceRegistor::align_non_rigid_step(MatrixXd &V_tmpl, const MatrixXi &F_tmpl
     } else {
         b << Lx, lambda * Cwsb, lambda * Cwd;
     }
-    cout << "whole matrix set up done: A: " << A.rows() << " x " << A.cols() << " b: " << b.rows() << " x " << b.cols() << endl;
+    //cout << "whole matrix set up done: A: " << A.rows() << " x " << A.cols() << " b: " << b.rows() << " x " << b.cols() << endl;
 
     // Solve system
     LeastSquaresConjugateGradient<SparseMatrix<double> > solver;
     solver.compute(A);
-    cout << "Solver compute success: " << int(solver.info() == Success) << endl;
+    //cout << "Solver compute success: " << int(solver.info() == Success) << endl;
     MatrixXd V_sol = solver.solve(b);
     cout << "Solver solve success: " << int(solver.info() == Success) << endl;
     V_tmpl = V_sol;
-    cout << "system solve done: V_sol: " << V_sol.rows() << " x " << V_sol.cols() << endl;
+    //cout << "system solve done: V_sol: " << V_sol.rows() << " x " << V_sol.cols() << endl;
 
 }
 
 void FaceRegistor::build_octree(const MatrixXd &V) {
-    cout << "start build octree" << endl;
+    //cout << "start build octree" << endl;
     kd_tree = new KDTree(3, cref(V), 10);
     kd_tree->index->buildIndex();
-    cout << "done build octree" << endl;
+    //cout << "done build octree" << endl;
 }
 
 void FaceRegistor::subdivide_template(MatrixXd &V_tmpl, MatrixXi &F_tmpl) {

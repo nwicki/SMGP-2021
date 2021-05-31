@@ -43,6 +43,7 @@ static int selected_landmark_file_id = 0;
 // Face registration
 Eigen::MatrixXd V_tmpl(0, 3);
 Eigen::MatrixXi F_tmpl(0, 3);
+Matrix3d R; // rotation matrix from rigid align
 
 // PCA computation
 PCA *pca = new PCA();
@@ -348,7 +349,7 @@ void draw_face_registration_window(ImGuiMenu &menu) {
         string face_file_path = face_folder_path + landmarked_face_names[selected_face_id] + "_landmarks.txt";
         MatrixXd P_tmpl = landmarkSelector.get_landmarks_from_file(tmpl_file_path, V_tmpl, F_tmpl);
         MatrixXd P = landmarkSelector.get_landmarks_from_file(face_file_path, V, F);
-        faceRegistor.align_rigid(V_tmpl, P_tmpl, P);
+        R = faceRegistor.align_rigid(V_tmpl, P_tmpl, P);
         set_mesh(V_tmpl, F_tmpl, 0);
         cout << "Align Rigid" << endl;
     }
@@ -372,7 +373,7 @@ void draw_face_registration_window(ImGuiMenu &menu) {
         faceRegistor.center_and_rescale_template(V_tmpl, P_tmpl, P);
         P_tmpl = landmarkSelector.get_landmarks_from_file(tmpl_file_path, V_tmpl, F_tmpl);
         P = landmarkSelector.get_landmarks_from_file(face_file_path, V, F);
-        faceRegistor.align_rigid(V_tmpl, P_tmpl, P);
+        R = faceRegistor.align_rigid(V_tmpl, P_tmpl, P);
         set_mesh(V_tmpl, F_tmpl, 0);
         set_mesh(V, F, 1);
         faceRegistor.build_octree(V);
@@ -395,7 +396,7 @@ void draw_face_registration_window(ImGuiMenu &menu) {
     }
     if (ImGui::Button("Save registered face", ImVec2(-1, 0))) {
         string save_file_path = save_folder_path + landmarked_face_names[selected_face_id] + "_aligned.obj";
-        igl::writeOBJ(save_file_path, V_tmpl, F_tmpl);
+        igl::writeOBJ(save_file_path, V_tmpl * R, F_tmpl);
         cout << "Saved registered face to " << save_file_path << endl;
     }
     ImGui::PushItemWidth(0.4*menu_width);
@@ -437,7 +438,7 @@ void draw_face_registration_window(ImGuiMenu &menu) {
     ImGui::PopItemWidth();
 
     ImGui::Text("Face to register");
-    ImGui::BeginChild("Faces", ImVec2(180, 400), true);
+    ImGui::BeginChild("Faces", ImVec2(180, 300), true);
     for (int i = 0; i < landmarked_face_names.size(); i++) {
         if (ImGui::Selectable(&landmarked_face_names[i][0], selected_face_id == i)) {
             selected_face_id = i;
@@ -446,6 +447,45 @@ void draw_face_registration_window(ImGuiMenu &menu) {
         }
     }
     ImGui::EndChild();
+
+    if (ImGui::Button("Register all", ImVec2(-1, 0))) {
+        for (int i = 0; i < landmarked_face_names.size(); i++) {
+            // load a scanned face
+            string scan_file_path = face_folder_path + landmarked_face_names[i]+".obj";
+            load_mesh(scan_file_path, V, F, 1);
+            // reload template face
+            string template_file_path = tmpl_folder_path + face_template_names[selected_template_id]+".obj";
+            load_mesh(template_file_path, V_tmpl, F_tmpl, 0);
+            // register it (same code as register)
+            string tmpl_file_path = tmpl_folder_path + face_template_names[selected_template_id] + "_landmarks.txt";
+            string face_file_path = face_folder_path + landmarked_face_names[i] + "_landmarks.txt";
+            vector<LandmarkSelector::Landmark> landmarks_tmpl = landmarkSelector.get_landmarks_from_file(tmpl_file_path);
+            MatrixXd P_tmpl = landmarkSelector.get_landmarks_from_file(tmpl_file_path, V_tmpl, F_tmpl);
+            MatrixXd P = landmarkSelector.get_landmarks_from_file(face_file_path, V, F);
+            faceRegistor.center_and_rescale_mesh(V, P);
+            faceRegistor.center_and_rescale_template(V_tmpl, P_tmpl, P);
+            P_tmpl = landmarkSelector.get_landmarks_from_file(tmpl_file_path, V_tmpl, F_tmpl);
+            P = landmarkSelector.get_landmarks_from_file(face_file_path, V, F);
+            R = faceRegistor.align_rigid(V_tmpl, P_tmpl, P);
+            set_mesh(V_tmpl, F_tmpl, 0);
+            set_mesh(V, F, 1);
+            faceRegistor.build_octree(V);
+            float lambda = 1.0f;
+            float epsilon = 0.01f;
+            faceRegistor.align_non_rigid_step(V_tmpl, F_tmpl, landmarks_tmpl, V, P, lambda, epsilon);
+            epsilon = 3.0f;
+            for(int i=0; i<15; i++){
+                faceRegistor.align_non_rigid_step(V_tmpl, F_tmpl, landmarks_tmpl, V, P, lambda, epsilon);
+            }
+            set_mesh(V_tmpl, F_tmpl, 0);
+            set_mesh(V, F, 1);
+            // save mesh
+            string save_file_path = save_folder_path + landmarked_face_names[i] + "_aligned.obj";
+            igl::writeOBJ(save_file_path, V_tmpl * R, F_tmpl);
+            cout << "Saved registered face to " << save_file_path << endl;
+        }
+        cout << "Registered all faces using selected template" << endl;
+    }
 
     ImGui::End();
 }

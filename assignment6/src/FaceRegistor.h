@@ -22,7 +22,7 @@ public:
 
     void center_and_rescale_template(MatrixXd &V_tmpl, const MatrixXd &P_tmpl, const MatrixXd &P);
 
-    void align_rigid(MatrixXd &V_tmpl, const MatrixXd &P_tmpl, const MatrixXd &P);
+    Matrix3d align_rigid(MatrixXd &V_tmpl, const MatrixXd &P_tmpl, const MatrixXd &P);
 
     void align_non_rigid_step(MatrixXd &V_tmpl, const MatrixXi &F_tmpl, const vector<LandmarkSelector::Landmark> &landmarks_tmpl, const MatrixXd &V, const MatrixXd &P, float lambda, float epsilon, bool useLandmarks=true);
 
