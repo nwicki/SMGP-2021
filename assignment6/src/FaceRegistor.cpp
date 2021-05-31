@@ -110,10 +110,10 @@ void FaceRegistor::align_non_rigid_step(MatrixXd &V_tmpl, const MatrixXi &F_tmpl
     //cout << "whole matrix set up done: A: " << A.rows() << " x " << A.cols() << " b: " << b.rows() << " x " << b.cols() << endl;
 
     // Solve system
-    LeastSquaresConjugateGradient<SparseMatrix<double> > solver;
-    solver.compute(A);
+    Eigen::SimplicialLDLT<SparseMatrix<double> > solver; //solve for A'Ax = A'b instead of Ax = b
+    solver.compute(A.transpose() * A);
     //cout << "Solver compute success: " << int(solver.info() == Success) << endl;
-    MatrixXd V_sol = solver.solve(b);
+    MatrixXd V_sol = solver.solve(A.transpose() * b);
     cout << "Solver solve success: " << int(solver.info() == Success) << endl;
     V_tmpl = V_sol;
     //cout << "system solve done: V_sol: " << V_sol.rows() << " x " << V_sol.cols() << endl;
