@@ -241,37 +241,32 @@ void draw_landmark_selection_window(ImGuiMenu &menu) {
         cout << message << endl;
     }
 
-    if (ImGui::Button("Save Landmarks", ImVec2(-1, 0))) {
+    ImGui::Checkbox("Show Landmarks", &(viewer.data().show_overlay));
+
+    if (ImGui::Button("Delete Last Landmark", ImVec2(-1, 0))) {
+        cout << "Delete last landmark" << endl;
+        landmarkSelector.delete_last_landmark();
+        landmarkSelector.display_landmarks(landmarkSelector.current_landmarks, V, F, viewer);
+    }
+
+    if (ImGui::Button("Reset Landmarks", ImVec2(-1, 0))) {
+        landmarkSelector.delete_all_landmarks();
+        cout << "Delete All Landmarks" << endl;
+        landmarkSelector.display_landmarks(landmarkSelector.current_landmarks, V, F, viewer);
+    }
+
+    if (ImGui::Button("Save Landmarks to File", ImVec2(-1, 0))) {
         string file_path = landmark_folder_path + landmark_filename + "_landmarks.txt";
         landmarkSelector.save_landmarks_to_file(landmarkSelector.current_landmarks, file_path);
         cout << landmarkSelector.current_landmarks.size() << " landmarks saved to " << file_path << endl;
     }
 
-    if (ImGui::Button("Delete last landmark", ImVec2(-1, 0))) {
-        cout << "Delete last added landmark" << endl;
-        landmarkSelector.delete_last_landmark();
-        landmarkSelector.display_landmarks(landmarkSelector.current_landmarks, V, F, viewer);
-    }
-
-    if (ImGui::Button("Load Landmarks", ImVec2(-1, 0))) {
+    if (ImGui::Button("Load Landmarks from File", ImVec2(-1, 0))) {
         string file_path = landmark_folder_path + landmark_filename + "_landmarks.txt";
         landmarkSelector.current_landmarks = landmarkSelector.get_landmarks_from_file(file_path);
         cout << landmarkSelector.current_landmarks.size() << " landmarks loaded from " << file_path << endl;
-    }
-
-    if (ImGui::Button("Display Landmarks", ImVec2(-1, 0))) {
         landmarkSelector.display_landmarks(landmarkSelector.current_landmarks, V, F, viewer);
         cout << "Display landmarks" << endl;
-    }
-
-    if (ImGui::Button("Clear Landmarks From Viewer", ImVec2(-1, 0))) {
-        landmarkSelector.clear_landmarks_from_viewer(viewer);
-        cout << "Clear landmarks from viewer" << endl;
-    }
-
-    if (ImGui::Button("Delete All Landmarks", ImVec2(-1, 0))) {
-        landmarkSelector.delete_all_landmarks();
-        cout << "Delete All Landmarks" << endl;
     }
 
     ImGui::PushItemWidth(0.9*menu_width);

@@ -27,12 +27,6 @@ void LandmarkSelector::display_landmarks(const vector<Landmark>& landmarks, cons
     viewer.data().set_points(P, C);
 }
 
-void LandmarkSelector::clear_landmarks_from_viewer(Viewer& viewer) {
-    MatrixXd P(1, 3);
-    MatrixXd C(1, 3);
-    viewer.data().set_points(P, C);
-}
-
 void LandmarkSelector::add_landmark_at_mouse_position(const MatrixXd& V, const MatrixXi& F, Viewer& viewer) {
     int fid;
     Eigen::Vector3f bc;
