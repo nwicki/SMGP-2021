@@ -7,6 +7,7 @@
 #include <string>
 #include <iostream>
 
+#include "Preprocessor.h"
 #include "LandmarkSelector.h"
 #include "FaceRegistor.h"
 #include "PCA.h"
@@ -27,6 +28,9 @@ Eigen::MatrixXi F(0, 3);
 // Menu Mode
 int current_mode = 0;
 int prev_mode = 0;
+
+// Preprocessing
+Preprocessor preprocessor = Preprocessor();
 
 // Landmark Selection
 bool is_selection_enabled = false;
@@ -70,7 +74,7 @@ bool callback_key_down(Viewer &viewer, unsigned char key, int modifiers) {
     if(key == '1') {
         // is_selection_enabled = !is_selection_enabled;
     }
-    if(current_mode == 2) { // face registration
+    if(current_mode == 3) { // face registration
         if(key == '1') {
             viewer.selected_data_index = 0;
         }
@@ -218,6 +222,88 @@ void draw_reduced_viewer_menu() {
     }
 }
 
+void draw_preprocessing_window(ImGuiMenu &menu) {
+    float menu_width = 200.f * menu.menu_scaling();
+    ImGui::SetNextWindowPos(ImVec2(0.0f, 20.0f), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(0.0f, 0.0f), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSizeConstraints(ImVec2(menu_width, -1.0f), ImVec2(menu_width, -1.0f));
+    ImGui::Begin(
+        "Preprocessing", nullptr,
+        ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_AlwaysAutoResize |
+        ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse
+    );
+
+    draw_reduced_viewer_menu();
+    ImGui::Separator();
+
+    if (ImGui::Button("Clean connected components", ImVec2(-1, 0))) {
+        preprocessor.clean_connected_components(viewer, V, F);
+        cout << "Clean connected components" << endl;
+    }
+
+    if (ImGui::Button("Show signed distance", ImVec2(-1, 0))) {
+        preprocessor.compute_distance_to_boundary(viewer, V, F);
+        cout << "Show signed distance to boundary" << endl;
+    }
+
+    if (ImGui::Button("Smooth scalar field", ImVec2(-1, 0))) {
+        preprocessor.smooth_distance_field(viewer, V, F);
+        cout << "Smooth scalar field" << endl;
+    }
+
+    if (ImGui::Button("Remesh & cut along isoline", ImVec2(-1, 0))) {
+        preprocessor.remesh(viewer, V, F);
+        cout << "Remesh along isoline" << endl;
+    }
+
+    ImGui::PushItemWidth(0.4*menu_width);
+    ImGui::InputDouble("iso value", &preprocessor.iso_value);
+    ImGui::PopItemWidth();
+
+    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 0.8f, 0.2f, 0.7f));
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.15f, 0.9f, 0.3f, 1.0f));
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.0f, 0.8f, 0.2f, 1.0f));
+    if (ImGui::Button("Preprocess face", ImVec2(-1, 0))) {
+        preprocessor.preprocess(viewer, V, F, 3);
+        cout << "Preprocess face (not saved)" << endl;
+    }
+    ImGui::PopStyleColor(3);
+
+    if (ImGui::Button("Save mesh", ImVec2(-1, 0))) {
+        string file_path = preprocessor.save_mesh(V, F);
+        cout << "Save preprocessed mesh to" << file_path << endl;
+    }
+
+    ImGui::BeginChild("Choose face", ImVec2(180, 400), true);
+    for (int i = 0; i < preprocessor.mesh_names.size(); i++) {
+        if (ImGui::Selectable(&preprocessor.mesh_names[i][0], preprocessor.mesh_id == i)) {
+            preprocessor.mesh_id = i;
+            string mesh_file_path = preprocessor.mesh_folder_path + preprocessor.mesh_names[preprocessor.mesh_id] + ".obj";
+            load_mesh(mesh_file_path, V, F, 0);
+        }
+    }
+    ImGui::EndChild();
+
+    if (ImGui::Button("Preprocess all", ImVec2(-1, 0))) {
+        int prev_id = preprocessor.mesh_id;
+        for (int i = 0; i < preprocessor.mesh_names.size(); i++) {
+            preprocessor.mesh_id = i;
+            // load a scanned face
+            string mesh_file_path = preprocessor.mesh_folder_path + preprocessor.mesh_names[i]+".obj";
+            load_mesh(mesh_file_path, V, F, 0);
+            // preprocess it
+            preprocessor.preprocess(viewer, V, F, 3);
+            // save mesh
+            string save_path = preprocessor.save_mesh(V, F);
+            cout << "Saved preprocessed face to " << save_path << endl << endl;
+        }
+        preprocessor.mesh_id = prev_id;
+        cout << "Preprocessed all meshes in selected template" << endl;
+    }
+
+    ImGui::End();
+}
+
 void draw_landmark_selection_window(ImGuiMenu &menu) {
     float menu_width = 200.f * menu.menu_scaling();
     ImGui::SetNextWindowPos(ImVec2(0.0f, 20.0f), ImGuiCond_FirstUseEver);
@@ -336,12 +422,18 @@ void draw_face_registration_window(ImGuiMenu &menu) {
         set_mesh(V_tmpl, F_tmpl, 0);
         cout << "Align Non-Rigid" << endl;
     }
+    
+    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 0.8f, 0.2f, 0.7f));
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.15f, 0.9f, 0.3f, 1.0f));
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.0f, 0.8f, 0.2f, 1.0f));
     if (ImGui::Button("Register", ImVec2(-1, 0))) {
         faceRegistor.register_face(V_tmpl, F_tmpl, V, F);
         set_mesh(V_tmpl, F_tmpl, 0);
         set_mesh(V, F, 1);
         cout << "Register face" << endl;
     }
+    ImGui::PopStyleColor(3);
+
     if (ImGui::Button("Subdivide template", ImVec2(-1, 0))) {
         faceRegistor.subdivide_template(V_tmpl, F_tmpl);
         set_mesh(V_tmpl, F_tmpl, 0);
@@ -519,30 +611,41 @@ void setup_gui(ImGuiMenu &menu) {
                     prev_mode = current_mode;
                     current_mode = 0;
                 }
-                if (ImGui::MenuItem("Landmark Selection")) {
+                if (ImGui::MenuItem("Preprocessing")) {
                     if(current_mode != 0 || prev_mode != 1){
-                    clear_all_data();
-                    string landmark_file_path = landmark_folder_path + landmark_filename + landmark_file_extension;
-                    load_mesh(landmark_file_path);
-                }
+                        viewer.selected_data_index = 0;
+                        clear_all_data();
+                    }
                     prev_mode = current_mode;
                     current_mode = 1;
                 }
-                if (ImGui::MenuItem("Face Registration")) {
+                if (ImGui::MenuItem("Landmark Selection")) {
                     if(current_mode != 0 || prev_mode != 2){
+                        viewer.selected_data_index = 0;
+                        clear_all_data();
+                        string landmark_file_path = landmark_folder_path + landmark_filename + landmark_file_extension;
+                        load_mesh(landmark_file_path);
+                    }
+                    prev_mode = current_mode;
+                    current_mode = 2;
+                }
+                if (ImGui::MenuItem("Face Registration")) {
+                    if(current_mode != 0 || prev_mode != 3){
+                        viewer.selected_data_index = 0;
                         clear_all_data();
                         string tmpl_file_path = faceRegistor.tmpl_folder_path + faceRegistor.tmpl_names[faceRegistor.tmpl_id]+".obj";
                         load_mesh(tmpl_file_path, V_tmpl, F_tmpl, 0);
                     }
                     prev_mode = current_mode;
-                    current_mode = 2;
+                    current_mode = 3;
                 }
                 if (ImGui::MenuItem("PCA Computation")) {
-                    if(current_mode != 0 || prev_mode != 3){
-                    clear_all_data();
-                }
+                    if(current_mode != 0 || prev_mode != 4){
+                        viewer.selected_data_index = 0;
+                        clear_all_data();
+                    }
                     prev_mode = current_mode;
-                    current_mode = 3;
+                    current_mode = 4;
                 }
                 ImGui::EndMenu();
             }
@@ -554,9 +657,10 @@ void setup_gui(ImGuiMenu &menu) {
         // Show corresponding menu
         switch(current_mode) {
             case 0: draw_full_viewer_window(menu); break;
-            case 1: draw_landmark_selection_window(menu); break;
-            case 2: draw_face_registration_window(menu); break;
-            case 3: draw_pca_computation_window(menu); break;
+            case 1: draw_preprocessing_window(menu); break;
+            case 2: draw_landmark_selection_window(menu); break;
+            case 3: draw_face_registration_window(menu); break;
+            case 4: draw_pca_computation_window(menu); break;
             default: break;
         }
     };
