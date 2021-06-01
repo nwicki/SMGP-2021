@@ -1,13 +1,14 @@
+#include <boost/filesystem.hpp>
 #include <igl/read_triangle_mesh.h>
 #include <igl/opengl/glfw/Viewer.h>
 #include <igl/opengl/glfw/imgui/ImGuiMenu.h>
 #include <imgui/imgui.h>
 #include <vector>
 #include <string>
+#include <iostream>
+
 #include "LandmarkSelector.h"
 #include "FaceRegistor.h"
-#include <boost/filesystem.hpp>
-#include <iostream>
 #include "PCA.h"
 
 using namespace std;
@@ -25,11 +26,11 @@ Eigen::MatrixXi F(0, 3);
 
 // Menu Mode
 int current_mode = 0;
+int prev_mode = 0;
 
 // Landmark Selection
 bool is_selection_enabled = false;
 LandmarkSelector landmarkSelector = LandmarkSelector();
-FaceRegistor faceRegistor = FaceRegistor();
 
 // Mesh Loading
 vector<string> landmark_folder_names = {"../data/face_template/", "../data/scanned_faces_cleaned/"};
@@ -43,25 +44,12 @@ static int selected_landmark_file_id = 0;
 // Face registration
 Eigen::MatrixXd V_tmpl(0, 3);
 Eigen::MatrixXi F_tmpl(0, 3);
-Matrix3d R; // rotation matrix from rigid align
+bool hide_scan_face = false;
+bool has_subdivided = false;
+FaceRegistor faceRegistor = FaceRegistor(&landmarkSelector);
 
 // PCA computation
 PCA *pca = new PCA();
-
-vector<string> landmarked_face_names;
-static int selected_face_id = 0;
-string face_folder_path = "../data/scanned_faces_cleaned/";
-
-vector<string> face_template_names;
-static int selected_template_id = 3;
-string tmpl_folder_path = "../data/face_template/";
-
-string save_folder_path = "../data/aligned_faces/";
-
-bool hide_scan_face = false;
-bool has_subdivided = false;
-float non_rigid_lambda = 1.0f;
-float non_rigid_epsilon = 0.01f;
 
 bool callback_mouse_down(Viewer &viewer, int button, int modifier) {
 
@@ -81,6 +69,14 @@ bool callback_key_down(Viewer &viewer, unsigned char key, int modifiers) {
 
     if(key == '1') {
         // is_selection_enabled = !is_selection_enabled;
+    }
+    if(current_mode == 2) { // face registration
+        if(key == '1') {
+            viewer.selected_data_index = 0;
+        }
+        if(key == '2') {
+            viewer.selected_data_index = 1;
+        }
     }
     return true;
 }
@@ -276,18 +272,18 @@ void draw_landmark_selection_window(ImGuiMenu &menu) {
 
     ImGui::PushItemWidth(0.9*menu_width);
     ImGui::Text("Choose folder");
-    if (ImGui::BeginCombo("", &landmark_folder_names[selected_landmark_folder_id][0])) // The second parameter is the label previewed before opening the combo. 
+    if (ImGui::BeginCombo("", &landmark_folder_names[selected_landmark_folder_id][0]))
     {
         for (int n = 0; n < landmark_folder_names.size(); n++)
         {
-            bool is_selected = (selected_landmark_folder_id == n); // You can store your selection however you want, outside or inside your objects
+            bool is_selected = (selected_landmark_folder_id == n);
             if (ImGui::Selectable(&landmark_folder_names[n][0], is_selected)) {
                 selected_landmark_folder_id = n;
                 landmark_folder_path = landmark_folder_names[selected_landmark_folder_id];
             }
 
             if (is_selected)
-                ImGui::SetItemDefaultFocus();   // You may set the initial focus when opening the combo (scrolling + for keyboard navigation support)
+                ImGui::SetItemDefaultFocus();
         }
         ImGui::EndCombo();
     }
@@ -304,9 +300,6 @@ void draw_landmark_selection_window(ImGuiMenu &menu) {
         }
     }
     ImGui::EndChild();
-
-    
-
     ImGui::End();
 }
 
@@ -326,64 +319,30 @@ void draw_face_registration_window(ImGuiMenu &menu) {
     ImGui::Separator();
 
     if (ImGui::Button("Center & Scale face", ImVec2(-1, 0))) {
-        string face_file_path = face_folder_path + landmarked_face_names[selected_face_id] + "_landmarks.txt";
-        cout << face_file_path << endl;
-        MatrixXd P = landmarkSelector.get_landmarks_from_file(face_file_path, V, F);
-        faceRegistor.center_and_rescale_mesh(V, P);
+        faceRegistor.center_and_rescale_scan(V, F);
         set_mesh(V, F, 1);
         cout << "Center & Scale face" << endl;
     }
 
     if (ImGui::Button("Center & Scale template", ImVec2(-1, 0))) {
-        string tmpl_file_path = tmpl_folder_path + face_template_names[selected_template_id] + "_landmarks.txt";
-        string face_file_path = face_folder_path + landmarked_face_names[selected_face_id] + "_landmarks.txt";
-        MatrixXd P_tmpl = landmarkSelector.get_landmarks_from_file(tmpl_file_path, V_tmpl, F_tmpl);
-        MatrixXd P = landmarkSelector.get_landmarks_from_file(face_file_path, V, F);
-        faceRegistor.center_and_rescale_template(V_tmpl, P_tmpl, P);
+        faceRegistor.center_and_rescale_template(V_tmpl, F_tmpl, V, F);
         set_mesh(V_tmpl, F_tmpl, 0);
         cout << "Center & Scale template" << endl;
     }
 
     if (ImGui::Button("Align Rigid", ImVec2(-1, 0))) {
-        string tmpl_file_path = tmpl_folder_path + face_template_names[selected_template_id] + "_landmarks.txt";
-        string face_file_path = face_folder_path + landmarked_face_names[selected_face_id] + "_landmarks.txt";
-        MatrixXd P_tmpl = landmarkSelector.get_landmarks_from_file(tmpl_file_path, V_tmpl, F_tmpl);
-        MatrixXd P = landmarkSelector.get_landmarks_from_file(face_file_path, V, F);
-        R = faceRegistor.align_rigid(V_tmpl, P_tmpl, P);
-        set_mesh(V_tmpl, F_tmpl, 0);
+        faceRegistor.align_rigid(V_tmpl, F_tmpl, V, F);
+        set_mesh(V, F, 1);
         cout << "Align Rigid" << endl;
     }
     if (ImGui::Button("Align Non-Rigid", ImVec2(-1, 0))) {
-        string tmpl_file_path = tmpl_folder_path + face_template_names[selected_template_id] + "_landmarks.txt";
-        string face_file_path = face_folder_path + landmarked_face_names[selected_face_id] + "_landmarks.txt";
-        vector<LandmarkSelector::Landmark> landmarks_tmpl = landmarkSelector.get_landmarks_from_file(tmpl_file_path);
-        MatrixXd P = landmarkSelector.get_landmarks_from_file(face_file_path, V, F);
         faceRegistor.build_octree(V);
-        faceRegistor.align_non_rigid_step(V_tmpl, F_tmpl, landmarks_tmpl, V, P, non_rigid_lambda, non_rigid_epsilon, !has_subdivided);
+        faceRegistor.align_non_rigid_step(V_tmpl, F_tmpl, V, F);
         set_mesh(V_tmpl, F_tmpl, 0);
         cout << "Align Non-Rigid" << endl;
     }
     if (ImGui::Button("Register", ImVec2(-1, 0))) {
-        string tmpl_file_path = tmpl_folder_path + face_template_names[selected_template_id] + "_landmarks.txt";
-        string face_file_path = face_folder_path + landmarked_face_names[selected_face_id] + "_landmarks.txt";
-        vector<LandmarkSelector::Landmark> landmarks_tmpl = landmarkSelector.get_landmarks_from_file(tmpl_file_path);
-        MatrixXd P_tmpl = landmarkSelector.get_landmarks_from_file(tmpl_file_path, V_tmpl, F_tmpl);
-        MatrixXd P = landmarkSelector.get_landmarks_from_file(face_file_path, V, F);
-        faceRegistor.center_and_rescale_mesh(V, P);
-        faceRegistor.center_and_rescale_template(V_tmpl, P_tmpl, P);
-        P_tmpl = landmarkSelector.get_landmarks_from_file(tmpl_file_path, V_tmpl, F_tmpl);
-        P = landmarkSelector.get_landmarks_from_file(face_file_path, V, F);
-        R = faceRegistor.align_rigid(V_tmpl, P_tmpl, P);
-        set_mesh(V_tmpl, F_tmpl, 0);
-        set_mesh(V, F, 1);
-        faceRegistor.build_octree(V);
-        float lambda = 1.0f;
-        float epsilon = 0.01f;
-        faceRegistor.align_non_rigid_step(V_tmpl, F_tmpl, landmarks_tmpl, V, P, lambda, epsilon);
-        epsilon = 3.0f;
-        for(int i=0; i<4; i++){
-            faceRegistor.align_non_rigid_step(V_tmpl, F_tmpl, landmarks_tmpl, V, P, lambda, epsilon);
-        }
+        faceRegistor.register_face(V_tmpl, F_tmpl, V, F);
         set_mesh(V_tmpl, F_tmpl, 0);
         set_mesh(V, F, 1);
         cout << "Register face" << endl;
@@ -395,19 +354,18 @@ void draw_face_registration_window(ImGuiMenu &menu) {
         cout << "Subdivide template" << endl;
     }
     if (ImGui::Button("Save registered face", ImVec2(-1, 0))) {
-        string save_file_path = save_folder_path + landmarked_face_names[selected_face_id] + "_aligned.obj";
-        igl::writeOBJ(save_file_path, V_tmpl * R, F_tmpl);
-        cout << "Saved registered face to " << save_file_path << endl;
+        string save_path = faceRegistor.save_registered_scan(V_tmpl, F_tmpl);
+        cout << "Saved registered face to " << save_path << endl;
     }
     ImGui::PushItemWidth(0.4*menu_width);
-    if (ImGui::InputFloat("lambda", &non_rigid_lambda))
+    if (ImGui::InputFloat("lambda", &faceRegistor.m_lambda))
     {
-        non_rigid_lambda = std::max(0.0f, std::min(1000.0f, non_rigid_lambda));
+        faceRegistor.m_lambda = std::max(0.0f, std::min(1000.0f, faceRegistor.m_lambda));
     }
 
-    if (ImGui::InputFloat("epsilon", &non_rigid_epsilon))
+    if (ImGui::InputFloat("epsilon", &faceRegistor.m_epsilon))
     {
-        non_rigid_epsilon = std::max(0.0f, std::min(1000.0f, non_rigid_epsilon));
+        faceRegistor.m_epsilon = std::max(0.0f, std::min(1000.0f, faceRegistor.m_epsilon));
     }
     ImGui::PopItemWidth();
 
@@ -418,16 +376,16 @@ void draw_face_registration_window(ImGuiMenu &menu) {
 
     ImGui::PushItemWidth(0.9*menu_width);
     ImGui::Text("Template Face");
-    if (ImGui::BeginCombo("", &face_template_names[selected_template_id][0])) // The second parameter is the label previewed before opening the combo. 
+    if (ImGui::BeginCombo("", &faceRegistor.tmpl_names[faceRegistor.tmpl_id][0])) // The second parameter is the label previewed before opening the combo. 
     {
-        for (int n = 0; n < face_template_names.size(); n++)
+        for (int n = 0; n < faceRegistor.tmpl_names.size(); n++)
         {
-            bool is_selected = (selected_template_id == n); // You can store your selection however you want, outside or inside your objects
-            if (ImGui::Selectable(&face_template_names[n][0], is_selected)) {
-                selected_template_id = n;
-                string template_file_path = tmpl_folder_path + face_template_names[selected_template_id]+".obj";
-                load_mesh(template_file_path, V_tmpl, F_tmpl, 0);
-                has_subdivided = true;
+            bool is_selected = (faceRegistor.tmpl_id == n); // You can store your selection however you want, outside or inside your objects
+            if (ImGui::Selectable(&faceRegistor.tmpl_names[n][0], is_selected)) {
+                faceRegistor.tmpl_id = n;
+                string tmpl_file_path = faceRegistor.tmpl_folder_path + faceRegistor.tmpl_names[faceRegistor.tmpl_id]+".obj";
+                load_mesh(tmpl_file_path, V_tmpl, F_tmpl, 0);
+                has_subdivided = false;
             }
 
             if (is_selected)
@@ -439,51 +397,34 @@ void draw_face_registration_window(ImGuiMenu &menu) {
 
     ImGui::Text("Face to register");
     ImGui::BeginChild("Faces", ImVec2(180, 300), true);
-    for (int i = 0; i < landmarked_face_names.size(); i++) {
-        if (ImGui::Selectable(&landmarked_face_names[i][0], selected_face_id == i)) {
-            selected_face_id = i;
-            string face_file_path = face_folder_path + landmarked_face_names[selected_face_id]+".obj";
-            load_mesh(face_file_path, V, F, 1);
+    for (int i = 0; i < faceRegistor.scan_names.size(); i++) {
+        if (ImGui::Selectable(&faceRegistor.scan_names[i][0], faceRegistor.scan_id == i)) {
+            faceRegistor.scan_id = i;
+            string scan_file_path = faceRegistor.scan_folder_path + faceRegistor.scan_names[faceRegistor.scan_id]+".obj";
+            load_mesh(scan_file_path, V, F, 1);
         }
     }
     ImGui::EndChild();
 
     if (ImGui::Button("Register all", ImVec2(-1, 0))) {
-        for (int i = 0; i < landmarked_face_names.size(); i++) {
+        int prev_id = faceRegistor.scan_id;
+        for (int i = 0; i < faceRegistor.scan_names.size(); i++) {
+            faceRegistor.scan_id = i;
             // load a scanned face
-            string scan_file_path = face_folder_path + landmarked_face_names[i]+".obj";
+            string scan_file_path = faceRegistor.scan_folder_path + faceRegistor.scan_names[i]+".obj";
             load_mesh(scan_file_path, V, F, 1);
             // reload template face
-            string template_file_path = tmpl_folder_path + face_template_names[selected_template_id]+".obj";
-            load_mesh(template_file_path, V_tmpl, F_tmpl, 0);
+            string tmpl_file_path = faceRegistor.tmpl_folder_path + faceRegistor.tmpl_names[faceRegistor.tmpl_id]+".obj";
+            load_mesh(tmpl_file_path, V_tmpl, F_tmpl, 0);
             // register it (same code as register)
-            string tmpl_file_path = tmpl_folder_path + face_template_names[selected_template_id] + "_landmarks.txt";
-            string face_file_path = face_folder_path + landmarked_face_names[i] + "_landmarks.txt";
-            vector<LandmarkSelector::Landmark> landmarks_tmpl = landmarkSelector.get_landmarks_from_file(tmpl_file_path);
-            MatrixXd P_tmpl = landmarkSelector.get_landmarks_from_file(tmpl_file_path, V_tmpl, F_tmpl);
-            MatrixXd P = landmarkSelector.get_landmarks_from_file(face_file_path, V, F);
-            faceRegistor.center_and_rescale_mesh(V, P);
-            faceRegistor.center_and_rescale_template(V_tmpl, P_tmpl, P);
-            P_tmpl = landmarkSelector.get_landmarks_from_file(tmpl_file_path, V_tmpl, F_tmpl);
-            P = landmarkSelector.get_landmarks_from_file(face_file_path, V, F);
-            R = faceRegistor.align_rigid(V_tmpl, P_tmpl, P);
-            set_mesh(V_tmpl, F_tmpl, 0);
-            set_mesh(V, F, 1);
-            faceRegistor.build_octree(V);
-            float lambda = 1.0f;
-            float epsilon = 0.01f;
-            faceRegistor.align_non_rigid_step(V_tmpl, F_tmpl, landmarks_tmpl, V, P, lambda, epsilon);
-            epsilon = 3.0f;
-            for(int i=0; i<15; i++){
-                faceRegistor.align_non_rigid_step(V_tmpl, F_tmpl, landmarks_tmpl, V, P, lambda, epsilon);
-            }
+            faceRegistor.register_face(V_tmpl, F_tmpl, V, F);
             set_mesh(V_tmpl, F_tmpl, 0);
             set_mesh(V, F, 1);
             // save mesh
-            string save_file_path = save_folder_path + landmarked_face_names[i] + "_aligned.obj";
-            igl::writeOBJ(save_file_path, V_tmpl * R, F_tmpl);
-            cout << "Saved registered face to " << save_file_path << endl;
+            string save_path = faceRegistor.save_registered_scan(V_tmpl, F_tmpl);
+            cout << "Saved registered face to " << save_path << endl;
         }
+        faceRegistor.scan_id = prev_id;
         cout << "Registered all faces using selected template" << endl;
     }
 
@@ -575,25 +516,33 @@ void setup_gui(ImGuiMenu &menu) {
         if (ImGui::BeginMainMenuBar()) {
             if (ImGui::BeginMenu("View")) {
                 if (ImGui::MenuItem("Viewer")) {
+                    prev_mode = current_mode;
                     current_mode = 0;
                 }
                 if (ImGui::MenuItem("Landmark Selection")) {
-                    current_mode = 1;
+                    if(current_mode != 0 || prev_mode != 1){
                     clear_all_data();
                     string landmark_file_path = landmark_folder_path + landmark_filename + landmark_file_extension;
                     load_mesh(landmark_file_path);
                 }
+                    prev_mode = current_mode;
+                    current_mode = 1;
+                }
                 if (ImGui::MenuItem("Face Registration")) {
+                    if(current_mode != 0 || prev_mode != 2){
+                        clear_all_data();
+                        string tmpl_file_path = faceRegistor.tmpl_folder_path + faceRegistor.tmpl_names[faceRegistor.tmpl_id]+".obj";
+                        load_mesh(tmpl_file_path, V_tmpl, F_tmpl, 0);
+                    }
+                    prev_mode = current_mode;
                     current_mode = 2;
-                    clear_all_data();
-                    string template_file_path = tmpl_folder_path + face_template_names[selected_template_id]+".obj";
-                    string face_file_path = face_folder_path + landmarked_face_names[selected_face_id]+".obj";
-                    load_mesh(template_file_path, V_tmpl, F_tmpl, 0);
-                    load_mesh(face_file_path, V, F, 1);
                 }
                 if (ImGui::MenuItem("PCA Computation")) {
-                    current_mode = 3;
+                    if(current_mode != 0 || prev_mode != 3){
                     clear_all_data();
+                }
+                    prev_mode = current_mode;
+                    current_mode = 3;
                 }
                 ImGui::EndMenu();
             }
@@ -635,8 +584,6 @@ int main(int argc, char *argv[]) {
     setup_gui(menu);
 
     // face registration
-    fill_filenames(landmarked_face_names, "../data/scanned_faces_cleaned/", ".obj");
-    fill_filenames(face_template_names, "../data/face_template/", ".obj");
     fill_filenames(landmark_filenames[0], "../data/face_template/", ".obj");
     fill_filenames(landmark_filenames[1], "../data/scanned_faces_cleaned/", ".obj");
 

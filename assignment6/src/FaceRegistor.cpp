@@ -11,19 +11,64 @@
 #include <igl/knn.h>
 #include <igl/cat.h>
 #include "FaceRegistor.h"
+#include <boost/filesystem.hpp>
 
 using namespace std;
 using namespace Eigen;
 using namespace nanoflann;
+namespace fs = boost::filesystem;
 using Viewer = igl::opengl::glfw::Viewer;
+using Landmark = LandmarkSelector::Landmark;
 typedef Eigen::Triplet<double> T;
+
+void FaceRegistor::fill_file_names(vector<string> &names,  string path, string extension) {
+    names.clear();
+    for (auto const & file : fs::recursive_directory_iterator(path)) {
+        if (fs::is_regular_file(file) && file.path().extension() == extension)
+            names.emplace_back(file.path().stem().string());
+    }
+    sort(names.begin(), names.end());
+}
+
+vector<Landmark> FaceRegistor::get_scan_landmarks() {
+    string face_file_path = scan_folder_path + scan_names[scan_id] + "_landmarks.txt";
+    return selector->get_landmarks_from_file(face_file_path);
+}
+
+MatrixXd FaceRegistor::get_scan_landmarks_matrix(const MatrixXd &V, const MatrixXi &F) {
+    string face_file_path = scan_folder_path + scan_names[scan_id] + "_landmarks.txt";
+    return selector->get_landmarks_from_file(face_file_path, V, F);
+}
+
+vector<Landmark> FaceRegistor::get_template_landmarks() {
+    string tmpl_file_path = tmpl_folder_path + tmpl_names[tmpl_id] + "_landmarks.txt";
+    return selector->get_landmarks_from_file(tmpl_file_path);
+}
+
+MatrixXd FaceRegistor::get_template_landmarks_matrix(const MatrixXd &V_tmpl, const MatrixXi &F_tmpl) {
+    string tmpl_file_path = tmpl_folder_path + tmpl_names[tmpl_id] + "_landmarks.txt";
+    return selector->get_landmarks_from_file(tmpl_file_path, V_tmpl, F_tmpl);
+}
+
+string FaceRegistor::save_registered_scan(const MatrixXd &V_tmpl, const MatrixXi &F_tmpl) {
+    string save_file_path = save_folder_path + scan_names[scan_id] + "_aligned.obj";
+    igl::writeOBJ(save_file_path, V_tmpl, F_tmpl);
+    return save_file_path;
+}
 
 void FaceRegistor::center_and_rescale_mesh(MatrixXd &V, const MatrixXd &P, double factor) {
     RowVector3d bc = P.colwise().mean();
     V = factor * (V.rowwise() - bc);
 }
 
-void FaceRegistor::center_and_rescale_template(MatrixXd &V_tmpl, const MatrixXd &P_tmpl, const MatrixXd &P) {
+void FaceRegistor::center_and_rescale_scan(MatrixXd &V, const MatrixXi &F) {
+    MatrixXd P = get_scan_landmarks_matrix(V, F);
+    center_and_rescale_mesh(V, P);
+}
+
+void FaceRegistor::center_and_rescale_template(MatrixXd &V_tmpl, const MatrixXi &F_tmpl, const MatrixXd &V, const MatrixXi &F) {
+    MatrixXd P_tmpl = get_template_landmarks_matrix(V_tmpl, F_tmpl);
+    MatrixXd P = get_scan_landmarks_matrix(V, F);
     RowVector3d tmpl_landmark_mean = P_tmpl.colwise().mean();
     RowVector3d face_landmark_mean = P.colwise().mean();
     double tmpl_avg2mean = (P_tmpl.rowwise() - tmpl_landmark_mean).rowwise().norm().mean();
@@ -32,17 +77,22 @@ void FaceRegistor::center_and_rescale_template(MatrixXd &V_tmpl, const MatrixXd 
     center_and_rescale_mesh(V_tmpl, P_tmpl, factor);
 }
 
-Matrix3d FaceRegistor::align_rigid(MatrixXd &V_tmpl, const MatrixXd &P_tmpl, const MatrixXd &P) {
+void FaceRegistor::align_rigid(const MatrixXd &V_tmpl, const MatrixXi &F_tmpl, MatrixXd &V, const MatrixXi &F) {
+    MatrixXd P_tmpl = get_template_landmarks_matrix(V_tmpl, F_tmpl);
+    MatrixXd P = get_scan_landmarks_matrix(V, F);
     Matrix3d H = P_tmpl.transpose() * P; // both need to be centered first!
-    Matrix3d U, V, R;
+    Matrix3d U, W, R;
     Vector3d S;
-    igl::svd3x3(H, U, S, V); // with this implementation, we know det U = det V = 1
-    R = V * U.transpose();
-    V_tmpl = V_tmpl * R.transpose();
-    return R;
+    igl::svd3x3(H, U, S, W); // with this implementation, we know det U = det V = 1
+    R = W * U.transpose();
+    V = V * R;
 }
 
-void FaceRegistor::align_non_rigid_step(MatrixXd &V_tmpl, const MatrixXi &F_tmpl, const vector<LandmarkSelector::Landmark> &landmarks_tmpl, const MatrixXd &V, const MatrixXd &P, float lambda, float epsilon, bool useLandmarks) {
+void FaceRegistor::align_non_rigid_step(MatrixXd &V_tmpl, const MatrixXi &F_tmpl, const MatrixXd &V, const MatrixXi &F) {
+    // Fetch landmarks
+    vector<Landmark> landmarks_tmpl = get_template_landmarks();
+    MatrixXd P = get_scan_landmarks_matrix(V, F);
+    
     // Laplacian matrix 
     SparseMatrix<double> Laplacian;
     igl::cotmatrix(V_tmpl, F_tmpl, Laplacian);
@@ -50,11 +100,11 @@ void FaceRegistor::align_non_rigid_step(MatrixXd &V_tmpl, const MatrixXi &F_tmpl
     //cout << "Laplacian matrix done: L: " << Laplacian.rows() << " x " << Laplacian.cols() << " Lx: " << Lx.rows() << " x " << Lx.cols() << endl;
 
     // Boundary constraints
-    SparseMatrix<double> Csb; // Csb = boundary constraints (original)
-    MatrixXd Cwsb;
+    SparseMatrix<double> Csb; // Csb = boundary constraints
+    MatrixXd Cwsb; // corresponding right hand side
     VectorXi Bi; // boundary indices
     igl::boundary_loop(F_tmpl, Bi);
-    SparseMatrix<double> Id(V_tmpl.rows(), V_tmpl.rows()), Cd;
+    SparseMatrix<double> Id(V_tmpl.rows(), V_tmpl.rows());
     Id.setIdentity();
     igl::slice(Id, Bi, 1, Csb);
     igl::slice(V_tmpl, Bi, 1, Cwsb);
@@ -64,7 +114,7 @@ void FaceRegistor::align_non_rigid_step(MatrixXd &V_tmpl, const MatrixXi &F_tmpl
 
     // Target landmarks constraints
     SparseMatrix<double> Csl(23, V_tmpl.rows()); // Csl = landmark constraints (target)
-    MatrixXd Cwsl = P;
+    MatrixXd Cwsl = P; // corresponding right hand side
     vector<T> tripletList;
     tripletList.reserve(23 * 3);
     int index = 0;
@@ -80,8 +130,6 @@ void FaceRegistor::align_non_rigid_step(MatrixXd &V_tmpl, const MatrixXi &F_tmpl
     //cout << "landmarks constraints done: Csl: " << Csl.rows() << " x " << Csl.cols() << " Cwsl: " << Cwsl.rows() << " x " << Cwsl.cols() << endl;
 
     // Query dynamic constraints (close to target face)
-    double scale = (V_tmpl.colwise().maxCoeff() - V_tmpl.colwise().minCoeff()).norm();
-    // double epsilon = 1e-2 * scale;
     VectorXi I(V_tmpl.rows());
     for(int i=0; i<V_tmpl.rows(); i++) {
         vector<size_t> ret_index(1);
@@ -91,21 +139,22 @@ void FaceRegistor::align_non_rigid_step(MatrixXd &V_tmpl, const MatrixXi &F_tmpl
         kd_tree->index->findNeighbors(resultSet, RowVector3d(V_tmpl.row(i)).data(), SearchParams(10));
         I(i) = ret_index[0];
     }
+    SparseMatrix<double> Cd;
     MatrixXd C, Cwd; // C = position of nearest neighbor (#V_tmpl x 3), Cwd = reduced C
     igl::slice(V, I, 1, C);
-    Array<bool, Dynamic, 1> c_mask = ((V_tmpl - C).rowwise().norm().array() < epsilon) * (Bi_mask.cast<bool>().array());
+    Array<bool, Dynamic, 1> c_mask = ((V_tmpl - C).rowwise().norm().array() < m_epsilon) * (Bi_mask.cast<bool>().array());
     igl::slice_mask(C, c_mask, 1, Cwd);
     igl::slice_mask(Id, c_mask, 1, Cd);
     //cout << "dynamic constraints done: Cd: " << Cd.rows() << " x " << Cd.cols() << " Cwd: " << Cwd.rows() << " x " << Cwd.cols() << endl;
 
     // Set up whole matrix and right hand side
-    SparseMatrix<double> Snd = useLandmarks? lambda * igl::cat(1, Csb, igl::cat(1, Csl, Cd)) : lambda * igl::cat(1, Csb, Cd);
+    SparseMatrix<double> Snd = useLandmarks? m_lambda * igl::cat(1, Csb, igl::cat(1, Csl, Cd)) : m_lambda * igl::cat(1, Csb, Cd);
     SparseMatrix<double> A = igl::cat(1, Laplacian, Snd);
     MatrixXd b(A.rows(), 3);
     if(useLandmarks){
-        b << Lx, lambda * Cwsb, lambda * Cwsl, lambda * Cwd;
+        b << Lx, m_lambda * Cwsb, m_lambda * Cwsl, m_lambda * Cwd;
     } else {
-        b << Lx, lambda * Cwsb, lambda * Cwd;
+        b << Lx, m_lambda * Cwsb, m_lambda * Cwd;
     }
     //cout << "whole matrix set up done: A: " << A.rows() << " x " << A.cols() << " b: " << b.rows() << " x " << b.cols() << endl;
 
@@ -171,4 +220,20 @@ void FaceRegistor::subdivide_template(MatrixXd &V_tmpl, MatrixXi &F_tmpl) {
     
     // Set up the viewer to display the new mesh
     V_tmpl = Vout; F_tmpl = Fout;
+}
+
+void FaceRegistor::register_face(MatrixXd &V_tmpl, const MatrixXi &F_tmpl, MatrixXd &V, const MatrixXi &F, int num_iter, float lambda, float epsilon1, float epsilon2) {
+    center_and_rescale_scan(V, F);
+    center_and_rescale_template(V_tmpl, F_tmpl, V, F);
+    align_rigid(V_tmpl, F_tmpl, V, F);
+    build_octree(V);
+
+    m_lambda = lambda;
+    m_epsilon = epsilon1;
+    align_non_rigid_step(V_tmpl, F_tmpl, V, F);
+
+    m_epsilon = epsilon2;
+    for(int i=0; i<num_iter-1; i++){
+        align_non_rigid_step(V_tmpl, F_tmpl, V, F);
+    }
 }
