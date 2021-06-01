@@ -83,6 +83,7 @@ public:
     void showFace(Viewer& viewer, MatrixXi& F);
     void showEigenFaceOffset(Viewer& viewer, MatrixXi& F);
     void showMorphedFace(Viewer& viewer, MatrixXi& F);
+    void showError(Viewer& viewer, MatrixXi& F);
 };
 
 

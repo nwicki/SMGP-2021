@@ -311,3 +311,10 @@ void PCA::showMorphedFace(Viewer& viewer, MatrixXi& F) {
         }
     }
 }
+
+void PCA::showError(Viewer& viewer, MatrixXi& F) {
+    VectorXd error = (_meanFace + _faceOffset - _faceList[_faceIndex]).rowwise().norm();
+    MatrixXd C;
+    igl::colormap(igl::COLOR_MAP_TYPE_JET, error, 0.0, 4.0, C); //empirical range
+    viewer.data().set_colors(C);
+}

@@ -483,6 +483,11 @@ void draw_pca_computation_window(ImGuiMenu &menu) {
         pca->showEigenFaceOffset(viewer, F);
     }
 
+    if (ImGui::Button("Show error", ImVec2(-1,0))) {
+        pca->showEigenFaceOffset(viewer, F);
+        pca->showError(viewer, F);
+    }
+
     if(ImGui::InputInt("Morph face index", &pca->_morphIndex)) {
         pca->_morphIndex = min(max(0, pca->_morphIndex), (int) (pca->_faceList.size() - 1));
         pca->showMorphedFace(viewer, F);
