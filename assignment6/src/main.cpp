@@ -532,28 +532,34 @@ void draw_pca_computation_window(ImGuiMenu &menu) {
     ImGui::Separator();
 
     if(ImGui::InputInt("#Eigen faces", &pca->_nEigenFaces)) {
-        pca->_nEigenFaces = min(max(1,pca->_nEigenFaces), pca->_maxEigenFaces);
-        pca->initializeParameters();
-        pca->recomputeAll();
+        pca->_nEigenFaces = min(max(1,pca->_nEigenFaces), (int) pca->_faceList.size());
+        pca->computeEigenFaceOffsets();
         pca->updateWeightEigenFaces();
         pca->showEigenFaceOffset(viewer, F);
     }
 
     for(int i = 0; i < pca->_nEigenFaces; i++) {
-        if(ImGui::SliderFloat(("Eigen face " + to_string(i)).c_str(), &pca->_weightEigenFaces(i),0.0,1.0,"%.3f")) {
+        if(ImGui::SliderFloat(("Eigen face " + to_string(i)).c_str(), &pca->_weightEigenFaces(i),-1.0,1.0,"%.3f")) {
             pca->computeEigenFaceOffsetIndex();
             viewer.data().clear();
             viewer.data().set_mesh(pca->_meanFace + pca->_faceOffset, F);
         }
     }
 
-    if (ImGui::Button("Show face with Eigen face offsets", ImVec2(-1,0))) {
+    if (ImGui::Button("Approximate face with Eigen faces", ImVec2(-1,0))) {
+        pca->showApproximatedFace(viewer, F);
+    }
+
+    if (ImGui::Button("Set weight approximated face", ImVec2(-1,0))) {
+        pca->setWeightsApproximatedFace();
+    }
+
+    if (ImGui::Button("Show face with current weights", ImVec2(-1,0))) {
         pca->showEigenFaceOffset(viewer, F);
     }
 
-    if (ImGui::Button("Show error", ImVec2(-1,0))) {
-        pca->showEigenFaceOffset(viewer, F);
-        pca->showError(viewer, F);
+    if (ImGui::Button("Show error to face index", ImVec2(-1,0))) {
+        pca->showError(viewer);
     }
 
     if(ImGui::InputInt("Morph face index", &pca->_morphIndex)) {
@@ -561,7 +567,7 @@ void draw_pca_computation_window(ImGuiMenu &menu) {
         pca->showMorphedFace(viewer, F);
     }
 
-    ImGui::Text("Morphing of the following indices: \nFace index: %d \nMorph face index: %d", pca->_faceIndex, pca->_morphIndex);
+    ImGui::Text("Morphing face with current weights and \nmorph face index: %d", pca->_morphIndex);
 
     if(ImGui::SliderFloat("Morph rate", &pca->_morphLambda,0,1)) {
         pca->showMorphedFace(viewer, F);

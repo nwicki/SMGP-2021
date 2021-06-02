@@ -43,8 +43,8 @@ bool PCA::endsWith(const string& str, const string& suffix) {
 }
 
 void PCA::initializeParameters() {
-    _weightEigenFaces.resize(_nEigenFaces);
-    _weightEigenFaces.setOnes();
+    _weightEigenFaces.resize(_faceList.size());
+    _weightEigenFaces.setZero();
 }
 
 void PCA::loadFaces(Viewer& viewer, MatrixXi& F, bool init) {
@@ -146,8 +146,8 @@ void PCA::computePCA() {
     }
     decreasing.colwise().normalize();
     // Order Eigen faces in decreasing order
-    _eigenFaces.resize(decreasing.rows(),_maxEigenFaces);
-    for(int i = 0; i < _maxEigenFaces; i++) {
+    _eigenFaces.resize(decreasing.rows(), _faceList.size());
+    for(int i = 0; i < _faceList.size(); i++) {
         _eigenFaces.col(i) = decreasing.col(decreasing.cols() - 1 - i);
     }
     // Result runtime
@@ -157,7 +157,7 @@ void PCA::computePCA() {
 }
 
 void PCA::computeEigenFaceWeights() {
-    if(_eigenFaces.size() < _nEigenFaces) {
+    if(_eigenFaces.cols() != _faceList.size()) {
         cout << "Not enough eigen faces available" << endl;
         return;
     }
@@ -166,17 +166,37 @@ void PCA::computeEigenFaceWeights() {
         return;
     }
     cout << "Compute weights for each face and corresponding Eigenfaces" << endl;
-    _weightEigenFacesPerFace.resize(_nEigenFaces,_faceList.size());
+    _weightEigenFacesPerFace.resize((int) _faceList.size(),(int) _faceList.size());
+    _weightEigenFacesMinMax.resize((int) _faceList.size(),2);
+    _weightEigenFacesMinMax.setZero();
     for(int i = 0; i < _faceList.size(); i++) {
-        for(int j = 0; j < _nEigenFaces; j++) {
-            _weightEigenFacesPerFace(j,i) = _PCA_A.col(i).dot(_eigenFaces.col(j));
+        for(int j = 0; j < _faceList.size(); j++) {
+            double weight = _PCA_A.col(i).dot(_eigenFaces.col(j));
+            _weightEigenFacesMinMax(j,0) = min(_weightEigenFacesMinMax(j,0), weight);
+            _weightEigenFacesMinMax(j,1) = max(_weightEigenFacesMinMax(j,1), weight);
+            _weightEigenFacesPerFace(j,i) = weight;
+        }
+    }
+    _weightEigenFacesMinMax.col(0) = _weightEigenFacesMinMax.col(0).cwiseAbs();
+    for(int i = 0; i < _faceList.size(); i++) {
+        for(int j = 0; j < _faceList.size(); j++) {
+            double weight = _weightEigenFacesPerFace(j,i);
+            if(weight < 0) {
+                _weightEigenFacesPerFace(j,i) = weight / _weightEigenFacesMinMax(j,0);
+            }
+            else if(0 < weight) {
+                _weightEigenFacesPerFace(j,i) = weight / _weightEigenFacesMinMax(j,1);
+            }
+            else {
+                _weightEigenFacesPerFace(j,i) = 0.0;
+            }
         }
     }
     cout << endl;
 }
 
 void PCA::computeEigenFaceOffsets() {
-    if(_weightEigenFacesPerFace.size() < _faceList.size()) {
+    if(_weightEigenFacesPerFace.cols() < _faceList.size()) {
         cout << "Not enough weights available" << endl;
         return;
     }
@@ -190,7 +210,18 @@ void PCA::computeEigenFaceOffsets() {
         MatrixXd sum(_faceList[i].rows(),_faceList[i].cols());
         sum.setZero();
         for(int j = 0; j < _nEigenFaces; j++) {
-            MatrixXd weighted = _weightEigenFacesPerFace(j,i) * _eigenFaces.col(j);
+            double weight = _weightEigenFacesPerFace(j,i);
+            MatrixXd weighted;
+            if(weight < 0) {
+                weighted = weight * _weightEigenFacesMinMax(j,0) * _eigenFaces.col(j);
+            }
+            else if(0 < weight) {
+                weighted = weight * _weightEigenFacesMinMax(j,1) * _eigenFaces.col(j);
+            }
+            else {
+                weighted.resize(_eigenFaces.rows(),1);
+                weighted.setZero();
+            }
             convert1Dto3D(weighted);
             sum += weighted;
         }
@@ -200,7 +231,7 @@ void PCA::computeEigenFaceOffsets() {
 }
 
 void PCA::computeEigenFaceOffsetIndex() {
-    if(_weightEigenFacesPerFace.size() < _faceList.size()) {
+    if(_weightEigenFacesPerFace.cols() < _faceList.size()) {
         cout << "Not enough weights available" << endl;
         return;
     }
@@ -215,7 +246,18 @@ void PCA::computeEigenFaceOffsetIndex() {
         return;
     }
     for(int j = 0; j < _nEigenFaces; j++) {
-        MatrixXd weighted = _weightEigenFaces(j) * _weightEigenFacesPerFace(j,_faceIndex) * _eigenFaces.col(j);
+        double weight = _weightEigenFaces(j);
+        MatrixXd weighted;
+        if(weight < 0) {
+            weighted = weight * _weightEigenFacesMinMax(j,0) * _eigenFaces.col(j);
+        }
+        else if(0 < weight) {
+            weighted = weight * _weightEigenFacesMinMax(j,1) * _eigenFaces.col(j);
+        }
+        else {
+            weighted.resize(_eigenFaces.rows(),1);
+            weighted.setZero();
+        }
         convert1Dto3D(weighted);
         sum += weighted;
     }
@@ -237,7 +279,7 @@ void PCA::showAverageFace(Viewer& viewer, MatrixXi& F) {
     }
     else {
         _faceIndex = -1;
-        _weightEigenFaces.setOnes();
+        _weightEigenFaces.setZero();
         computeEigenFaceOffsetIndex();
         viewer.data().clear();
         viewer.data().set_mesh(_meanFace, F);
@@ -245,9 +287,8 @@ void PCA::showAverageFace(Viewer& viewer, MatrixXi& F) {
 }
 
 void PCA::updateWeightEigenFaces() {
-    _weightEigenFaces.resize(_nEigenFaces);
     if(_faceIndex == -1) {
-        _weightEigenFaces.setOnes();
+        _weightEigenFaces.setZero();
     }
     computeEigenFaceOffsetIndex();
 }
@@ -266,7 +307,7 @@ void PCA::updateFaceIndex(Viewer& viewer, MatrixXi& F) {
         cout << "No weights computed" << endl;
     }
     else {
-        _weightEigenFaces.setOnes();
+        _weightEigenFaces.setZero();
         updateWeightEigenFaces();
     }
 }
@@ -286,7 +327,7 @@ void PCA::showFace(Viewer& viewer, MatrixXi& F) {
     }
 }
 
-void PCA::showEigenFaceOffset(Viewer& viewer, MatrixXi& F) {
+void PCA::showApproximatedFace(Viewer &viewer, MatrixXi &F) {
     if(_faceOffsets.empty()) {
         cout << "No faces with Eigen offsets computed" << endl;
     }
@@ -294,6 +335,34 @@ void PCA::showEigenFaceOffset(Viewer& viewer, MatrixXi& F) {
         cout << "No mean face computed" << endl;
     }
     else {
+        viewer.data().clear();
+        if(_faceIndex == -1) {
+            viewer.data().set_mesh(_meanFace, F);
+            _weightEigenFaces.setZero();
+        }
+        else {
+            viewer.data().set_mesh(_meanFace + _faceOffsets[_faceIndex], F);
+        }
+    }
+}
+
+void PCA::setWeightsApproximatedFace() {
+    if(_faceIndex == -1) {
+        _weightEigenFaces.setZero();
+    }
+    else {
+        for(int i = 0; i < _weightEigenFaces.rows(); i++) {
+            _weightEigenFaces(i) = _weightEigenFacesPerFace(i,_faceIndex);
+        }
+    }
+}
+
+void PCA::showEigenFaceOffset(Viewer& viewer, MatrixXi& F) {
+    if(_meanFace.rows() == 0) {
+        cout << "No mean face computed" << endl;
+    }
+    else {
+        computeEigenFaceOffsetIndex();
         viewer.data().clear();
         viewer.data().set_mesh(_meanFace + _faceOffset, F);
     }
@@ -310,18 +379,33 @@ void PCA::showMorphedFace(Viewer& viewer, MatrixXi& F) {
         cout << "No faces with Eigen offsets computed" << endl;
     }
     else {
-        viewer.data().clear();
         if(_faceIndex == -1) {
+            viewer.data().clear();
             viewer.data().set_mesh(_meanFace + _morphLambda * _faceOffsets[_morphIndex], F);
         }
         else {
+            viewer.data().clear();
             viewer.data().set_mesh(_meanFace + _morphLambda * _faceOffsets[_morphIndex] + (1 - _morphLambda) * _faceOffset, F);
         }
     }
 }
 
-void PCA::showError(Viewer& viewer, MatrixXi& F) {
-    VectorXd error = (_meanFace + _faceOffset - _faceList[_faceIndex]).rowwise().norm();
+void PCA::showError(Viewer& viewer) {
+    MatrixXd face;
+    if(_faceIndex == -1) {
+        face = _meanFace;
+    }
+    else {
+        face = _faceList[_faceIndex];
+    }
+    MatrixXd V = viewer.data().V;
+    if(V.rows() != face.rows() || V.cols() != face.cols()) {
+        cout << "Cannot compare two faces of different sizes" << endl;
+        cout << "Size of currently shown face: " << V.rows() << " rows, " << V.cols() << " cols" << endl;
+        cout << "Size of face compared to: " << face.rows() << " rows, " << face.cols() << " cols" << endl;
+        return;
+    }
+    VectorXd error = (V - face).rowwise().norm();
     MatrixXd C;
     igl::colormap(igl::COLOR_MAP_TYPE_JET, error, 0.0, 4.0, C); //empirical range
     viewer.data().set_colors(C);

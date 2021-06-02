@@ -46,6 +46,8 @@ public:
     VectorXf _weightEigenFaces = VectorXf(0);
     // Columns hold weight per Eigen face #Eigen faces x #faces
     MatrixXd _weightEigenFacesPerFace = MatrixXd(0,0);
+    // Column 0 -> minimal weights, Column 1 -> maximal weights
+    MatrixXd _weightEigenFacesMinMax = MatrixXd(0,0);
     // Face index to morph the current one with
     int _morphIndex = 0;
     // Morph factor
@@ -59,7 +61,6 @@ public:
             "../data/aligned_faces_example/example3/",
             "../data/aligned_faces/"
     };
-    const int _maxEigenFaces = 20;
 
     // Functions
     PCA() {
@@ -81,9 +82,11 @@ public:
     void updateWeightEigenFaces();
     void updateFaceIndex(Viewer& viewer, MatrixXi& F);
     void showFace(Viewer& viewer, MatrixXi& F);
+    void showApproximatedFace(Viewer& viewer, MatrixXi& F);
+    void setWeightsApproximatedFace();
     void showEigenFaceOffset(Viewer& viewer, MatrixXi& F);
     void showMorphedFace(Viewer& viewer, MatrixXi& F);
-    void showError(Viewer& viewer, MatrixXi& F);
+    void showError(Viewer& viewer);
 };
 
 
