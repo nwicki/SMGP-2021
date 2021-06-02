@@ -47,7 +47,6 @@ static int selected_landmark_file_id = 0;
 // Face registration
 Eigen::MatrixXd V_tmpl(0, 3);
 Eigen::MatrixXi F_tmpl(0, 3);
-bool hide_scan_face = false;
 FaceRegistor faceRegistor = FaceRegistor(&landmarkSelector);
 
 // PCA computation
@@ -70,15 +69,10 @@ bool callback_mouse_down(Viewer &viewer, int button, int modifier) {
 bool callback_key_down(Viewer &viewer, unsigned char key, int modifiers) {
 
     if(key == '1') {
-        // is_selection_enabled = !is_selection_enabled;
+        viewer.selected_data_index = 0;
     }
-    if(current_mode == 3) { // face registration
-        if(key == '1') {
-            viewer.selected_data_index = 0;
-        }
-        if(key == '2') {
-            viewer.selected_data_index = 1;
-        }
+    if(key == '2') {
+        viewer.selected_data_index = 1;
     }
     return true;
 }
@@ -217,6 +211,7 @@ void draw_reduced_viewer_menu() {
         ImGui::Checkbox("Show overlay", &(viewer.data().show_overlay));
         ImGui::Checkbox("Show overlay depth", &(viewer.data().show_overlay_depth));
         ImGui::Checkbox("Wireframe", &(viewer.data().show_lines));
+        ImGui::Checkbox("Fill", &(viewer.data().show_faces));
     }
 }
 
@@ -448,11 +443,6 @@ void draw_face_registration_window(ImGuiMenu &menu) {
     }
     ImGui::PopItemWidth();
 
-    if (ImGui::Checkbox("Hide scan mesh", &hide_scan_face)) {
-        viewer.data_list[1].show_faces = !hide_scan_face;
-        viewer.data_list[1].show_lines = !hide_scan_face;
-    }
-
     ImGui::PushItemWidth(0.9*menu_width);
     ImGui::Text("Template Face");
     if (ImGui::BeginCombo("", &faceRegistor.tmpl_names[faceRegistor.tmpl_id][0])) // The second parameter is the label previewed before opening the combo. 
@@ -591,6 +581,15 @@ void clear_all_data(){
     } 
 }
 
+void reset_visibility_and_clear_all_data(){
+    for(size_t i=0; i<viewer.data_list.size(); i++){
+        viewer.selected_data_index = i;
+        viewer.data().show_faces = true;
+        viewer.data().show_lines = false;
+        viewer.data().clear();
+    } 
+}
+
 void setup_gui(ImGuiMenu &menu) {
     menu.callback_draw_viewer_window = [&](){};
     menu.callback_draw_custom_window = [&]()
@@ -604,16 +603,16 @@ void setup_gui(ImGuiMenu &menu) {
                 }
                 if (ImGui::MenuItem("Preprocessing")) {
                     if(current_mode != 0 || prev_mode != 1){
-                        viewer.selected_data_index = 0;
-                        clear_all_data();
+                        reset_visibility_and_clear_all_data();
+                        string mesh_file_path = preprocessor.mesh_folder_path + preprocessor.mesh_names[preprocessor.mesh_id]+".obj";
+                        load_mesh(mesh_file_path);
                     }
                     prev_mode = current_mode;
                     current_mode = 1;
                 }
                 if (ImGui::MenuItem("Landmark Selection")) {
                     if(current_mode != 0 || prev_mode != 2){
-                        viewer.selected_data_index = 0;
-                        clear_all_data();
+                        reset_visibility_and_clear_all_data();
                         string landmark_file_path = landmark_folder_path + landmark_filename + landmark_file_extension;
                         load_mesh(landmark_file_path);
                     }
@@ -622,8 +621,7 @@ void setup_gui(ImGuiMenu &menu) {
                 }
                 if (ImGui::MenuItem("Face Registration")) {
                     if(current_mode != 0 || prev_mode != 3){
-                        viewer.selected_data_index = 0;
-                        clear_all_data();
+                        reset_visibility_and_clear_all_data();
                         string tmpl_file_path = faceRegistor.tmpl_folder_path + faceRegistor.tmpl_names[faceRegistor.tmpl_id]+".obj";
                         load_mesh(tmpl_file_path, V_tmpl, F_tmpl, 0);
                     }
@@ -632,8 +630,7 @@ void setup_gui(ImGuiMenu &menu) {
                 }
                 if (ImGui::MenuItem("PCA Computation")) {
                     if(current_mode != 0 || prev_mode != 4){
-                        viewer.selected_data_index = 0;
-                        clear_all_data();
+                        reset_visibility_and_clear_all_data();
                     }
                     prev_mode = current_mode;
                     current_mode = 4;
@@ -688,6 +685,7 @@ int main(int argc, char *argv[]) {
     viewer.callback_mouse_down = callback_mouse_down;
 
     viewer.data().point_size = 15;
+    viewer.data().show_lines = false;
     viewer.core.set_rotation_type(igl::opengl::ViewerCore::ROTATION_TYPE_TRACKBALL);
     // Moves face to look towards camera
     igl::trackball(viewer.core.viewport(2),viewer.core.viewport(3),2.0f,viewer.down_rotation,0.0,0.0,0.0,2.5,viewer.core.trackball_angle);

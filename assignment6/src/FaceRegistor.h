@@ -22,7 +22,7 @@ private:
     KDTree *kd_tree;
     LandmarkSelector* selector;
 public:
-    string scan_folder_path = "../data/scanned_faces_cleaned/";
+    string scan_folder_path = "../data/preprocessed_faces/";
     vector<string> scan_names;
     int scan_id = 0;
 
@@ -37,8 +37,8 @@ public:
     bool useLandmarks = true;
 
     FaceRegistor(LandmarkSelector* landmarkSelector) : selector(landmarkSelector) {
-        fill_file_names(scan_names, "../data/scanned_faces_cleaned/", ".obj");
-        fill_file_names(tmpl_names, "../data/face_template/", ".obj");
+        fill_file_names(scan_names, scan_folder_path, ".obj");
+        fill_file_names(tmpl_names, tmpl_folder_path, ".obj");
     }
 
     void fill_file_names(vector<string> &names,  string path, string extension);

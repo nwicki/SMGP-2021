@@ -180,6 +180,10 @@ void PCA::computeEigenFaceOffsets() {
         cout << "Not enough weights available" << endl;
         return;
     }
+    if(_faceList.empty()) {
+        cout << "No faces loaded" << endl;
+        return;
+    }
     cout << "Compute eigen face offsets" << endl;
     _faceOffsets = vector<MatrixXd>(_faceList.size());
     for(int i = 0; i < _faceList.size(); i++) {
@@ -198,6 +202,10 @@ void PCA::computeEigenFaceOffsets() {
 void PCA::computeEigenFaceOffsetIndex() {
     if(_weightEigenFacesPerFace.size() < _faceList.size()) {
         cout << "Not enough weights available" << endl;
+        return;
+    }
+    if(_faceList.empty()) {
+        cout << "No faces loaded" << endl;
         return;
     }
     MatrixXd sum(_faceList[0].rows(),_faceList[0].cols());
