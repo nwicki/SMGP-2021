@@ -48,7 +48,6 @@ static int selected_landmark_file_id = 0;
 Eigen::MatrixXd V_tmpl(0, 3);
 Eigen::MatrixXi F_tmpl(0, 3);
 bool hide_scan_face = false;
-bool has_subdivided = false;
 FaceRegistor faceRegistor = FaceRegistor(&landmarkSelector);
 
 // PCA computation
@@ -433,12 +432,6 @@ void draw_face_registration_window(ImGuiMenu &menu) {
     }
     ImGui::PopStyleColor(3);
 
-    if (ImGui::Button("Subdivide template", ImVec2(-1, 0))) {
-        faceRegistor.subdivide_template(V_tmpl, F_tmpl);
-        set_mesh(V_tmpl, F_tmpl, 0);
-        has_subdivided = true;
-        cout << "Subdivide template" << endl;
-    }
     if (ImGui::Button("Save registered face", ImVec2(-1, 0))) {
         string save_path = faceRegistor.save_registered_scan(V_tmpl, F_tmpl);
         cout << "Saved registered face to " << save_path << endl;
@@ -471,7 +464,6 @@ void draw_face_registration_window(ImGuiMenu &menu) {
                 faceRegistor.tmpl_id = n;
                 string tmpl_file_path = faceRegistor.tmpl_folder_path + faceRegistor.tmpl_names[faceRegistor.tmpl_id]+".obj";
                 load_mesh(tmpl_file_path, V_tmpl, F_tmpl, 0);
-                has_subdivided = false;
             }
 
             if (is_selected)

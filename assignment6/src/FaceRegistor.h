@@ -65,7 +65,7 @@ public:
 
     void build_octree(const MatrixXd &V);
 
-    void subdivide_template(MatrixXd &V_tmpl, MatrixXi &F_tmpl);
+    void subdivide_template(MatrixXd &V_tmpl, MatrixXi &F_tmpl); //not used currently
 
     void register_face(MatrixXd &V_tmpl, const MatrixXi &F_tmpl, MatrixXd &V, const MatrixXi &F, int num_iter = 5, float lambda = 1.0f, float epsilon1 = 0.01f, float epsilon2 = 3.0f);
 
