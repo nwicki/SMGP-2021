@@ -7,8 +7,6 @@
 #include <string>
 #include <iostream>
 
-#include <igl/point_mesh_squared_distance.h>
-
 #include "Preprocessor.h"
 #include "LandmarkSelector.h"
 #include "FaceRegistor.h"
@@ -37,7 +35,6 @@ Preprocessor preprocessor = Preprocessor();
 // Landmark Selection
 bool is_selection_enabled = false;
 LandmarkSelector landmarkSelector = LandmarkSelector();
-
 // Mesh Loading
 vector<string> landmark_folder_names = {"../data/face_template/", "../data/scanned_faces_cleaned/", "../data/preprocessed_faces/"};
 vector<vector<string>> landmark_filenames = vector<vector<string>>(3, vector<string>());
@@ -301,43 +298,6 @@ void draw_preprocessing_window(ImGuiMenu &menu) {
         }
         preprocessor.mesh_id = prev_id;
         cout << "Preprocessed all meshes in selected template" << endl;
-    }
-
-    if (ImGui::Button("Transfer Landmarks", ImVec2(-1, 0))) {
-        for(int n=0; n<preprocessor.mesh_names.size(); n++) {
-            string mesh_file_path = preprocessor.mesh_folder_path + preprocessor.mesh_names[n]+".obj";
-            string new_file_path = preprocessor.save_folder_path + preprocessor.mesh_names[n] + "_preprocessed.obj";
-            igl::read_triangle_mesh(mesh_file_path, V, F);
-            igl::read_triangle_mesh(new_file_path, V_tmpl, F_tmpl);
-            string file_path = preprocessor.mesh_folder_path + preprocessor.mesh_names[n] + "_landmarks.txt";
-            MatrixXd P = landmarkSelector.get_landmarks_from_file(file_path, V, F);
-            vector<LandmarkSelector::Landmark> ldmk = landmarkSelector.get_landmarks_from_file(file_path);
-            VectorXd sqrD;
-            VectorXi I;
-            MatrixXd C;
-            igl::point_mesh_squared_distance(P, V_tmpl, F_tmpl, sqrD, I, C);
-            landmarkSelector.delete_all_landmarks();
-            for(int i=0; i<ldmk.size(); i++) {
-                LandmarkSelector::Landmark new_landmark = LandmarkSelector::Landmark();
-                new_landmark.face_index = I(i);
-                new_landmark.bary0 = ldmk[i].bary0;
-                new_landmark.bary1 = ldmk[i].bary1;
-                new_landmark.bary2 = ldmk[i].bary2;
-                landmarkSelector.current_landmarks.push_back(new_landmark);
-            }
-            int num_landmarks = landmarkSelector.current_landmarks.size();
-            MatrixXd P_tmpl(num_landmarks, 3);
-            int index = 0;
-            for (LandmarkSelector::Landmark landmark: landmarkSelector.current_landmarks) {
-                P_tmpl.row(index) << landmark.get_cartesian_coordinates(V_tmpl, F_tmpl);
-                index++;
-            }
-            cout << "Sum: " << (P - P_tmpl).sum() << "   ";
-            string sav_file_path = preprocessor.save_folder_path + preprocessor.mesh_names[n] + "_preprocessed_landmarks.txt";
-            landmarkSelector.save_landmarks_to_file(landmarkSelector.current_landmarks, sav_file_path);
-            cout << "Saved landmarks to " << sav_file_path << endl;
-        }
-        cout << "Transfer landmarks" << endl;
     }
 
     ImGui::End();
