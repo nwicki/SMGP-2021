@@ -94,6 +94,9 @@ The PCA user interface starts with the general viewer settings (we assume these 
 <li>
 "Show morphed face": This button lets the user display the result of the morph process should any other mesh have been displayed in the mean time.
 </li>
+<li>
+"Save mesh": This button lets the user save the displayed mesh to the folder "data/pca-results".
+</li>
 <img src="results/morph-face.gif" width="1000" height="500" />
 </ul>
 
