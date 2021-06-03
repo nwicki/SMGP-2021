@@ -316,21 +316,19 @@ void draw_landmark_selection_window(ImGuiMenu &menu) {
         cout << message << endl;
     }
 
-    ImGui::Checkbox("Show Landmarks", &(viewer.data().show_overlay));
-
-    if (ImGui::Button("Delete Last Landmark", ImVec2(-1, 0))) {
+    if (ImGui::Button("Remove Last Landmark", ImVec2(-1, 0))) {
         cout << "Delete last landmark" << endl;
         landmarkSelector.delete_last_landmark();
         landmarkSelector.display_landmarks(landmarkSelector.current_landmarks, V, F, viewer);
     }
 
-    if (ImGui::Button("Reset Landmarks", ImVec2(-1, 0))) {
+    if (ImGui::Button("Remove Landmarks", ImVec2(-1, 0))) {
         landmarkSelector.delete_all_landmarks();
         cout << "Delete All Landmarks" << endl;
         landmarkSelector.display_landmarks(landmarkSelector.current_landmarks, V, F, viewer);
     }
 
-    if (ImGui::Button("Save Landmarks to File", ImVec2(-1, 0))) {
+    if (ImGui::Button("Save Current Landmarks to File", ImVec2(-1, 0))) {
         string file_path = landmark_folder_path + landmark_filename + "_landmarks.txt";
         landmarkSelector.save_landmarks_to_file(landmarkSelector.current_landmarks, file_path);
         cout << landmarkSelector.current_landmarks.size() << " landmarks saved to " << file_path << endl;
