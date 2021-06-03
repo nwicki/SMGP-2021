@@ -45,6 +45,7 @@ bool PCA::endsWith(const string& str, const string& suffix) {
 void PCA::initializeParameters() {
     _weightEigenFaces.resize(max((int) _faceList.size(),_nEigenFaces));
     _weightEigenFaces.setZero();
+    _showError = false;
 }
 
 void PCA::loadFaces(Viewer& viewer, MatrixXi& F, bool init) {
@@ -391,6 +392,9 @@ void PCA::showMorphedFace(Viewer& viewer, MatrixXi& F) {
 }
 
 void PCA::showError(Viewer& viewer) {
+    if(!_showError) {
+        return;
+    }
     MatrixXd face;
     if(_faceIndex == -1) {
         face = _meanFace;

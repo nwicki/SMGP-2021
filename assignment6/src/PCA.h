@@ -52,6 +52,8 @@ public:
     int _morphIndex = 0;
     // Morph factor
     float _morphLambda = 0;
+    // Show error
+    bool _showError;
 
     // Constant variables
     const vector<const char*> _dataExamples = {

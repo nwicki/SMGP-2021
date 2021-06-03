@@ -556,8 +556,8 @@ void draw_pca_computation_window(ImGuiMenu &menu) {
         pca->showEigenFaceOffset(viewer, F);
     }
 
-    if (ImGui::Button("Show error to face index", ImVec2(-1,0))) {
-        pca->showError(viewer);
+    if (ImGui::Button("Toggle error to face index", ImVec2(-1,0))) {
+        pca->_showError = !pca->_showError;
     }
 
     if(ImGui::InputInt("Morph face index", &pca->_morphIndex)) {
@@ -578,6 +578,8 @@ void draw_pca_computation_window(ImGuiMenu &menu) {
     if (ImGui::Button("Save mesh", ImVec2(-1,0))) {
         pca->saveMesh(viewer);
     }
+
+    pca->showError(viewer);
 
     ImGui::End();
 }
