@@ -171,68 +171,28 @@ Once a face is manually or automatically registered, select `Save registered fac
 Simply select `Register all` at the bottom of the menu. All meshes will be registered and saved to the `data/preprocessed_faces` folder (overwriting existing ones if any).
 
 ### PCA UI
-The UI supports the adjustment of the weights for each Eigen face and allows morphing between two faces. (Nicolas, Clemens) 
+The UI supports the adjustment of the weights for each Eigen face and allows morphing between two faces.
 
 As additional features, we implemented:
-<ul>
-<li>
-change the amount of Eigen faces used to approximate the original faces (Nicolas)
-</li>
-<li>
-sliders for Eigen faces allowing to slide from the minimal weight of all original faces for each Eigen face to the maximal weight for reasonable adjustment of each weight, but still providing a big enough space to explore features (Nicolas) 
-</li>
-<li>
-a function to show the error between the shown and the original face (Nicolas, Pascal)
-</li>
-</ul>
-
-### Screenshot of the user interface used to adjust PCA parameters
-<img src="results/pca-ui.png" alt="drawing" height="600" width="300" />
-<ul>
-<li>
-The PCA user interface starts with the general viewer settings (we assume these settings are well known).
-</li>
-<li>
-"Choose data": It provides a dropdown to choose the dataset from for easy dataset selection.
-</li>
-<li>
-"Show average face": It shows the mean face of the dataset. Since it is no face available in the dataset the face index below will be set to -1.
-</li>
-<li>
-"Face index": The face index interface allows to decrease/increase the face index and scroll through each face in the dataset.
-</li>
-<li>
-"Show face": It shows the currently selected face from the dataset should any other mesh have been displayed in the mean time.
-</li>
++ Changing the amount of Eigen faces used to approximate the original faces
++ Sliders for Eigen faces allowing to slide from the minimal weight of all original faces for each Eigen face to the maximal weight for reasonable adjustment of each weight, but still providing a big enough space to explore features
++ A function to show the error between the shown and the original face
++ The PCA user interface starts with the general viewer settings (we assume these settings are well known).
++ `Choose data`: It provides a dropdown to choose the dataset from for easy dataset selection.
++ `Show average face`: It shows the mean face of the dataset. Since it is no face available in the dataset the face index below will be set to -1.
++ `Face index`: The face index interface allows to decrease/increase the face index and scroll through each face in the dataset.
++ `Show face`: This shows the currently selected face from the dataset should any other mesh have been displayed in the mean time.
 <img src="results/choose-dataset.gif" width="1000" height="500" />
-<li>
-"#Eigen faces": The next integer input allows the user to adjust the amount of Eigen faces used to adjust the face offset computed through a linear combination of all Eigen faces weighted with the chosen weight in the range [-1,1]. The weights of each Eigen face can be adjusted through the listed sliders starting at Eigen face 0.
-</li>
-<li>
-"Approximate face with Eigen faces": It shows the original face approximated using the Eigen faces with weights chosen to minimize the distance.
-</li>
-<li>
-"Set weight approximated face": It set the weights chosen by the above sliders according to the current face index and tries to approximate it as close as possible. 
-</li>
-<li>
-"Show face with current weights": This button lets you display the mean face with a linear combination of Eigen faces weighted according to the weight specified using the sliders for each Eigen face. 
-</li>
-<li>
-"Show error to face index": This displays a coloured visualization of the distance between the computed offset using a linear combination of the Eigen faces added to the mean face and the face chosen by the face index.
-</li>
++ `#Eigen faces`: The next integer input allows the user to adjust the amount of Eigen faces used to adjust the face offset computed through a linear combination of all Eigen faces weighted with the chosen weight in the range [-1,1]. The weights of each Eigen face can be adjusted through the listed sliders starting at Eigen face 0.
++ `Approximate face with Eigen faces`: This shows the original face approximated using the Eigen faces with weights chosen to minimize the distance. 
++ `Set weight approximated face`: This set the weights chosen by the above sliders according to the current face index and tries to approximate it as close as possible.
++ `Show face with current weights`: This button lets you display the mean face with a linear combination of Eigen faces weighted according to the weight specified using the sliders for each Eigen face. 
++ `Show error to face index`: This displays a coloured visualization of the distance between the computed offset using a linear combination of the Eigen faces added to the mean face and the face chosen by the face index.
 <img src="results/eigen-faces.gif" width="1000" height="500" />
-<li>
-"Morph face index": Specifies the face index of a face from the dataset which we will morph with the linear combination of Eigen faces currently chosen.
-</li>
-<li>
-"Morph rate": This scalar lets the user linearly interpolate between the two faces chosen for the morph process.
-</li>
-<li>
-"Show morphed face": This button lets the user display the result of the morph process should any other mesh have been displayed in the mean time.
-</li>
-<li>
-"Save mesh": This button lets the user save the displayed mesh to the folder "data/pca-results".
-</li>
++ `Morph face index`: Specifies the face index of a face from the dataset which we will morph with the linear combination of Eigen faces currently chosen.
++ `Morph rate`: This scalar lets the user linearly interpolate between the two faces chosen for the morph process.
++ `Show morphed face`: This button lets the user display the result of the morph process should any other mesh have been displayed in the mean time.
++ `Save mesh`: This button lets the user save the displayed mesh to the folder `data/pca-results`.
 <img src="results/morph-face.gif" width="1000" height="500" />
 </ul>
 
