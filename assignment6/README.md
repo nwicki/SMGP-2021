@@ -127,7 +127,7 @@ To solve this task, we gather a dataset of faces in a data structure. We proceed
 Then, we construct a matrix A where each column represents one of these offsets. We construct the covariance matrix using Matrix A as described in [1] to significantly reduce computation time.
 
 **Compute Eigen decomposition:**
-Compute the PCA from which we can reconstruct the most dominant Eigen vectors of our dataset.
+Compute the PCA from which we can reconstruct the most dominant Eigen vectors of our dataset again as described by [1].
 
 **Compute weights for approximation:**
 To most accurately represent the original faces using those Eigen faces, we compute the dot product between the offset, and the Eigen faces to compute the weight for each Eigen face. Using these weights we can reconstruct the original faces through a linear combination of all Eigen faces scaled by those weights added to the mean face.
