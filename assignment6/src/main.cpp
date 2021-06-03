@@ -577,6 +577,10 @@ void draw_pca_computation_window(ImGuiMenu &menu) {
         pca->showMorphedFace(viewer, F);
     }
 
+    if (ImGui::Button("Save mesh", ImVec2(-1,0))) {
+        pca->saveMesh(viewer);
+    }
+
     ImGui::End();
 }
 

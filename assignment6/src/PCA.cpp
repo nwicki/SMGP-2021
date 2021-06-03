@@ -410,3 +410,17 @@ void PCA::showError(Viewer& viewer) {
     igl::colormap(igl::COLOR_MAP_TYPE_JET, error, 0.0, 4.0, C); //empirical range
     viewer.data().set_colors(C);
 }
+
+void PCA::saveMesh(Viewer& viewer) {
+    struct stat buffer;
+    if(stat (_PCA_Results.c_str(), &buffer) != 0) {
+        if(mkdir(_PCA_Results.c_str(), 0777) == -1) {
+            cout << "Folder creation failed" << endl;
+            return;
+        }
+    }
+    string fileName = _PCA_Results + to_string(chrono::system_clock::now().time_since_epoch().count()) + ".obj";
+    cout << "Writing current mesh to " << fileName << endl;
+    igl::writeOBJ(fileName,viewer.data().V,viewer.data().F);
+    cout << endl;
+}

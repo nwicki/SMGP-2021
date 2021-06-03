@@ -61,6 +61,7 @@ public:
             "../data/aligned_faces_example/example3/",
             "../data/aligned_faces/"
     };
+    const string _PCA_Results = "../data/pca-results/";
 
     // Functions
     PCA() {
@@ -87,6 +88,7 @@ public:
     void showEigenFaceOffset(Viewer& viewer, MatrixXi& F);
     void showMorphedFace(Viewer& viewer, MatrixXi& F);
     void showError(Viewer& viewer);
+    void saveMesh(Viewer& viewer);
 };
 
 
