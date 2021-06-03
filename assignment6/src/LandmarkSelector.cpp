@@ -4,6 +4,7 @@
 #include <igl/unproject_onto_mesh.h>
 #include <iostream>
 #include "LandmarkSelector.h"
+#include <string>
 
 using namespace std;
 using namespace Eigen;
@@ -11,6 +12,8 @@ using Viewer = igl::opengl::glfw::Viewer;
 using Landmark = LandmarkSelector::Landmark;
 
 void LandmarkSelector::display_landmarks(const vector<Landmark>& landmarks, const MatrixXd& V, const MatrixXi& F, Viewer& viewer) {
+    viewer.data().labels_positions = MatrixXd(0,3);
+    viewer.data().labels_strings.clear();
     int num_landmarks = landmarks.size();
     MatrixXd P(num_landmarks, 3);
     MatrixXd C(num_landmarks, 3);
@@ -20,7 +23,8 @@ void LandmarkSelector::display_landmarks(const vector<Landmark>& landmarks, cons
         RowVector3d cartesian_point = landmark.get_cartesian_coordinates(V, F);
 
         P.row(index) << cartesian_point;
-        C.row(index) << RowVector3d(1, 0, 0);
+        C.row(index) << RowVector3d(0, 0, 1);
+        viewer.data().add_label(cartesian_point,to_string(index + 1));
 
         index++;
     }
