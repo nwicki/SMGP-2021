@@ -31,9 +31,6 @@ To solve this task, we gather a dataset of faces in a data structure. We proceed
 
 [1]: Matthew Turk and Alex Pentland. 1991. Eigenfaces for recognition. J. Cognitive Neuroscience 3, 1 (Winter 1991), 71–86. DOI:https://doi.org/10.1162/jocn.1991.3.1.71
 
-### filename / descriptive title / etc.
-<img src="results/.png" alt="drawing" height="500" width="1000" />
-
 ## Report for UI
 Worked on by: Whole group (most credit goes to Pascal)
 
@@ -54,7 +51,7 @@ a function to show the error between the shown and the original face (Nicolas, P
 </ul>
 
 ### Screenshot of the user interface used to adjust PCA parameters
-<img src="results/pca-ui.png" alt="drawing" height="1000" width="500" />
+<img src="results/pca-ui.png" alt="drawing" height="600" width="300" />
 <ul>
 <li>
 The PCA user interface starts with the general viewer settings (we assume these settings are well known).
