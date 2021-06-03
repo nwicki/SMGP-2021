@@ -111,15 +111,38 @@ Solving the system above turned out to be slow because it is a rectangular matri
 
 We observed that reducing `lambda` gives smoother results especially on the boundaries of the scan mesh, but doing less iterations seems to give similar results. We set `lambda=1`.
 
-## Report - PCA of faces
-Worked on by: Clemens, Nicolas
+## 5. PCA of faces
+**Worked on by:** Clemens Bachmann & Nicolas Wicki
 
-To solve this task, we gather a dataset of faces in a data structure. We proceed by computing the mean face and use it to compute the offset between this mean face and each face in the data set. Then, we construct a matrix A where each column represents one of these offsets. We construct the covariance matrix using Matrix A as described in [1] to significantly reduce computation time, and subsequently compute the PCA from which we can reconstruct the most dominant Eigen vectors of our dataset. To most accurately represent the original faces using those Eigen faces, we compute the dot product between the offset, and the Eigen faces to compute the weight for each Eigen face. Using these weights we can reconstruct the original faces through a linear combination of all Eigen faces scaled by those weights added to the mean face. We continued with the implementation of a morphing mechanism which is computed by linearly interpolating offsets (linear combinations of Eigen faces) of two faces and adding them to the mean face. This enables morphing from one face to another. (Clemens, Nicolas)
+**Relevant files:** `PCA.h|.cpp`
+
+**Compute mean face:**
+To solve this task, we gather a dataset of faces in a data structure. We proceed by computing the mean face and use it to compute the offset between this mean face and each face in the data set.
+
+**Prepare covariance matrix:**
+Then, we construct a matrix A where each column represents one of these offsets. We construct the covariance matrix using Matrix A as described in [1] to significantly reduce computation time.
+
+**Compute Eigen decomposition:**
+Compute the PCA from which we can reconstruct the most dominant Eigen vectors of our dataset.
+
+**Compute weights for approximation:**
+To most accurately represent the original faces using those Eigen faces, we compute the dot product between the offset, and the Eigen faces to compute the weight for each Eigen face. Using these weights we can reconstruct the original faces through a linear combination of all Eigen faces scaled by those weights added to the mean face.
+
+| Mean face | 1 Eigen face | 5 Eigen faces | 10 Eigen faces |
+|:---:|:---:|:---:|:---:|
+|<img src="results/5-mean-face.png" width="120" height="200"> |<img src="results/5-one-eigen-face.png" width="120" height="200"> |<img src="results/5-five-eigen-faces.png" width="120" height="200"> |<img src="results/5-ten-eigen-faces.png" width="120" height="200"> |
+
+| 15 Eigen faces | 20 Eigen faces | 25 Eigen faces | Original face|
+|:---:|:---:|:---:|:---:|
+|<img src="results/5-15-eigen-faces.png" width="120" height="200"> |<img src="results/5-20-eigen-faces.png" width="120" height="200"> |<img src="results/5-25-eigen-faces.png" width="120" height="200"> | <img src="results/5-original-face.png" width="120" height="200"> |
+
+**Compute morphing:**
+We continued with the implementation of a morphing mechanism which is computed by linearly interpolating offsets (linear combinations of Eigen faces) of two faces and adding them to the mean face. This enables morphing from one face to another.
 
 [1]: Matthew Turk and Alex Pentland. 1991. Eigenfaces for recognition. J. Cognitive Neuroscience 3, 1 (Winter 1991), 71–86. DOI:https://doi.org/10.1162/jocn.1991.3.1.71
 
-## Report for UI
-**Worked on by**: Whole group (most credit goes to Pascal)
+## 6. UI
+**Worked on by**: Whole group (most credit goes to Pascal Chang)
 
 To ensure modularity, the GUI contains a menu bar for selecting the desired menu. Each menu is associated with a specific task of the pipeline and can be viewed as an application on its own. There are five menus:
 
@@ -188,30 +211,31 @@ Simply select `Register all` at the bottom of the menu. All meshes will be regis
 ### PCA UI
 
 <img src="results/UI-PCA_general.png" width="100%">
-
-The UI supports the adjustment of the weights for each Eigen face and allows morphing between two faces. (Nicolas, Clemens) 
+The UI supports the adjustment of the weights for each Eigen face and allows morphing between two faces.
 
 As additional features, we implemented:
 + Changing the amount of Eigen faces used to approximate the original faces
 + Sliders for Eigen faces allowing to slide from the minimal weight of all original faces for each Eigen face to the maximal weight for reasonable adjustment of each weight, but still providing a big enough space to explore features
-+ A function to show the error between the shown and the original face
++ A function to show the error between the shown, and the original face
 + The PCA user interface starts with the general viewer settings (we assume these settings are well known).
+**To prepare the dataset:**
 + `Choose data`: It provides a dropdown to choose the dataset from for easy dataset selection.
 + `Show average face`: It shows the mean face of the dataset. Since it is no face available in the dataset the face index below will be set to -1.
-+ `Face index`: The face index interface allows to decrease/increase the face index and scroll through each face in the dataset.
-+ `Show face`: This shows the currently selected face from the dataset should any other mesh have been displayed in the mean time.
++ `Face index`: The face index interface allows decreasing/increasing the face index and scroll through each face in the dataset.
++ `Show face`: This shows the currently selected face from the dataset should any other mesh have been displayed in the meantime.
 <img src="results/choose-dataset.gif" width="1000" height="500" />
+**To compute linear combinations of Eigen faces:**
 + `#Eigen faces`: The next integer input allows the user to adjust the amount of Eigen faces used to adjust the face offset computed through a linear combination of all Eigen faces weighted with the chosen weight in the range [-1,1]. The weights of each Eigen face can be adjusted through the listed sliders starting at Eigen face 0.
 + `Approximate face with Eigen faces`: This shows the original face approximated using the Eigen faces with weights chosen to minimize the distance. 
 + `Set weight approximated face`: This set the weights chosen by the above sliders according to the current face index and tries to approximate it as close as possible.
 + `Show face with current weights`: This button lets you display the mean face with a linear combination of Eigen faces weighted according to the weight specified using the sliders for each Eigen face. 
 + `Show error to face index`: This displays a coloured visualization of the distance between the computed offset using a linear combination of the Eigen faces added to the mean face and the face chosen by the face index.
 <img src="results/eigen-faces.gif" width="1000" height="500" />
+**To morph between two faces:**
 + `Morph face index`: Specifies the face index of a face from the dataset which we will morph with the linear combination of Eigen faces currently chosen.
 + `Morph rate`: This scalar lets the user linearly interpolate between the two faces chosen for the morph process.
-+ `Show morphed face`: This button lets the user display the result of the morph process should any other mesh have been displayed in the mean time.
++ `Show morphed face`: This button lets the user display the result of the morph process should any other mesh have been displayed in the meantime.
 + `Save mesh`: This button lets the user save the displayed mesh to the folder `data/pca-results`.
 <img src="results/morph-face.gif" width="1000" height="500" />
-</ul>
 
 
