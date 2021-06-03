@@ -145,6 +145,8 @@ Simply select `Preprocess all` at the bottom of the menu. All meshes will be pre
 
 ### Landmark Selection UI
 
+<img src="results/UI-landmark_general.png" width="100%">
+
 ### Face Registration UI
 
 <img src="results/UI-registration_general.png" width="100%">
@@ -171,6 +173,9 @@ Once a face is manually or automatically registered, select `Save registered fac
 Simply select `Register all` at the bottom of the menu. All meshes will be registered and saved to the `data/preprocessed_faces` folder (overwriting existing ones if any).
 
 ### PCA UI
+
+<img src="results/UI-PCA_general.png" width="100%">
+
 The UI supports the adjustment of the weights for each Eigen face and allows morphing between two faces. (Nicolas, Clemens) 
 
 As additional features, we implemented:
