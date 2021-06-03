@@ -43,7 +43,7 @@ bool PCA::endsWith(const string& str, const string& suffix) {
 }
 
 void PCA::initializeParameters() {
-    _weightEigenFaces.resize(_faceList.size());
+    _weightEigenFaces.resize(max((int) _faceList.size(),_nEigenFaces));
     _weightEigenFaces.setZero();
 }
 
