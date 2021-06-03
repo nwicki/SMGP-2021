@@ -39,10 +39,23 @@ Even though the scan faces from the dataset are supposed to be cleaned already, 
 The remeshing function in libigl creates duplicate vertices that we remove using `igl::remove_duplicate_vertices`. However, the resulting mesh can (in rare cases) become not edge-manifold. Because the remeshing requires edge-manifold meshes as input, the preprocessing is skipped for these few meshes (~ 3 out of 112).
 
 ## Report - Landmark selection
-Worked on by:
+**Worked on by:** Isaak Hanimann
+**Relevant files:** `LandmarkSelector.h|.cpp`
 
-### filename / descriptive title / etc.
-<img src="results/.png" alt="drawing" height="500" width="1000" />
+We used 23 landmarks. Those are the same landmarks as the example landmarks provided by the TA's.
+<img src="results/landmark-selection.png" alt="drawing" width="500"/>
+
+To specify a landmark the user enables selection and clicks on the face mesh. A ray is cast in the view direction starting from the mouse position and the intersection with the mesh is calculated.
+
+The intersection is then stored as a landmark which consists of:
+
++  index of the face (triangle) of the intersection
++  barycenter coordinates of the point within the triangle
+
+We chose this format for the landmarks because it allows us to specify landmarks with arbitrary precision.
+The landmarks are identified by their index in the list of landmarks. So they must be added in the order of the image above.
+
+Once the 23 landmarks have been specified one can save the landmarks to a text file next to the obj file such that they can be loaded from there again for later use.
 
 ## 3. Rigid face alignment
 **Worked on by:** Franz Knobel & Pascal Chang
