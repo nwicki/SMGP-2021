@@ -138,6 +138,8 @@ To most accurately represent the original faces using those Eigen faces, we comp
 
 **Compute morphing:**
 We continued with the implementation of a morphing mechanism which is computed by linearly interpolating offsets (linear combinations of Eigen faces) of two faces and adding them to the mean face. This enables morphing from one face to another.
+<img src="results/5-morph-face.gif" width="1000" height="500" />
+
 
 [1]: Matthew Turk and Alex Pentland. 1991. Eigenfaces for recognition. J. Cognitive Neuroscience 3, 1 (Winter 1991), 71–86. DOI:https://doi.org/10.1162/jocn.1991.3.1.71
 
