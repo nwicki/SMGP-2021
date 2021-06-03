@@ -189,6 +189,19 @@ Simply select `Preprocess all` at the bottom of the menu. All meshes will be pre
 
 <img src="results/UI-landmark_general.png" width="100%">
 
+**Select a mesh in the file browser**
+
+**Enable Selection** enables you to click on the mesh to create a new landmark at the intersection of the ray from the mouse with the mesh. The landmarks are appended to a list of landmarks. If this is enabled the mesh can't be rotated anymore. Turn it off to rotate it again.
+
+**Remove Last Landmark** removes the last element in the list of current landmarks.
+
+**Remove Landmarks** empties the current list of landmarks.
+
+**Save Current Landmarks to File** saves the landmarks in the current list of landmarks in a text file in the same folder as it's corresponding mesh. If there is a landmarks textfile already, it is overwritten.
+
+**Load Landmarks from File** looks for a text file corresponding to the mesh and loads them into the current landmarks list.
+
+
 ### Face Registration UI
 
 <img src="results/UI-registration_general.png" width="100%">
