@@ -38,7 +38,7 @@ Even though the scan faces from the dataset are supposed to be cleaned already, 
 
 The remeshing function in libigl creates duplicate vertices that we remove using `igl::remove_duplicate_vertices`. However, the resulting mesh can (in rare cases) become not edge-manifold. Because the remeshing requires edge-manifold meshes as input, the preprocessing is skipped for these few meshes (~ 3 out of 112).
 
-## Report - Landmark selection
+## 2. Landmark selection
 **Worked on by:** Isaak Hanimann
 **Relevant files:** `LandmarkSelector.h|.cpp`
 
