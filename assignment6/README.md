@@ -18,6 +18,7 @@ Additionally, a section is dedicated to the GUI and bonus tasks are discussed at
 
 ## 1. Preprocessing
 **Worked on by:** Pascal Chang
+
 **Relevant files:** `Preprocessor.h|.cpp`
 
 Even though the scan faces from the dataset are supposed to be cleaned already, we observed that some meshes still contain multiple connected components and/or have rough boundaries. That is why we decided to do our own preprocessing on the dataset in five steps:
@@ -40,6 +41,7 @@ The remeshing function in libigl creates duplicate vertices that we remove using
 
 ## 2. Landmark selection
 **Worked on by:** Isaak Hanimann
+
 **Relevant files:** `LandmarkSelector.h|.cpp`
 
 We used 23 landmarks. Those are the same landmarks as the example landmarks provided by the TA's.
@@ -59,6 +61,7 @@ Once the 23 landmarks have been specified one can save the landmarks to a text f
 
 ## 3. Rigid face alignment
 **Worked on by:** Franz Knobel & Pascal Chang
+
 **Relevant files:** `FaceRegistor.h|.cpp`
 
 Rigid alignment is a necessary step before warping the template mesh to the scanned face. This is done by first centering both:
@@ -78,6 +81,7 @@ As a general observation, the noses are often not well aligned after applying ri
 
 ## 4. Non-rigid face alignment
 **Worked on by:** Franz Knobel & Pascal Chang
+
 **Relevant files:** `FaceRegistor.h|.cpp`
 
 In order to perform PCA on the scanned faces we first need to register them with a common triangulation (template). Once the faces are rigidly aligned, we need to warp the template to match closely the surface of the scanned faces.
