@@ -413,6 +413,7 @@ void PCA::showError(Viewer& viewer) {
     MatrixXd C;
     igl::colormap(igl::COLOR_MAP_TYPE_JET, error, 0.0, 4.0, C); //empirical range
     viewer.data().set_colors(C);
+    cout << "Mean error: " << error.mean() << endl;
 }
 
 void PCA::saveMesh(Viewer& viewer) {

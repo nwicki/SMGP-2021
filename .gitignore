@@ -6,4 +6,5 @@
 /assignment6/data/scanned_faces_cleaned/
 /assignment6/data/aligned_faces/
 /assignment6/data/preprocessed_faces/
+/assignment6/data/vae_faces/
 /assignment6/cmake-build-debug/

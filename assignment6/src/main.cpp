@@ -11,6 +11,7 @@
 #include "LandmarkSelector.h"
 #include "FaceRegistor.h"
 #include "PCA.h"
+#include "VAE.h"
 
 using namespace std;
 using namespace Eigen;
@@ -51,6 +52,9 @@ FaceRegistor faceRegistor = FaceRegistor(&landmarkSelector);
 
 // PCA computation
 PCA *pca = new PCA();
+
+// VAE computation
+VAE *vae = new VAE();
 
 bool callback_mouse_down(Viewer &viewer, int button, int modifier) {
 
@@ -584,6 +588,58 @@ void draw_pca_computation_window(ImGuiMenu &menu) {
     ImGui::End();
 }
 
+
+void draw_bonus_task_window(ImGuiMenu &menu) {
+    float menu_width = 200.f * menu.menu_scaling();
+    ImGui::SetNextWindowPos(ImVec2(0.0f, 20.0f), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(0.0f, 0.0f), ImGuiCond_FirstUseEver);
+    //ImGui::SetNextWindowSizeConstraints(ImVec2(menu_width, -1.0f), ImVec2(menu_width, -1.0f));
+    ImGui::Begin(
+        "Bonus Task 2", nullptr,ImGuiWindowFlags_AlwaysAutoResize
+    );
+
+    draw_reduced_viewer_menu();
+
+    ImGui::Separator();
+
+    ImGui::SetNextItemWidth(-FLT_MIN);
+    if (ImGui::Combo("",&vae->_currentData,vae->_dataExamples.data(),vae->_dataExamples.size())) {
+        vae->initializeParameters();
+        vae->loadFaces(viewer, F);
+    }
+
+    if(ImGui::InputInt("Face index", &vae->_faceIndex)) {
+        vae->updateFaceIndex(viewer, F);
+    }
+
+    ImGui::Separator();
+
+    for(int i = 0; i < vae->_nFeatures; i++) {
+        if(ImGui::SliderFloat(("Feature " + to_string(i)).c_str(), &vae->_weightFeatures(i),-1.0,1.0,"%.3f")) {
+            VectorXd z = vae->denormalizeWeight((vae->_weightFeatures).cast<double>());
+            vae->forwardDecoder(z, V);
+            viewer.data().clear();
+            viewer.data().set_mesh(V, F);
+        }
+    }
+
+    if (ImGui::Button("Show original face", ImVec2(-1,0))) {
+        vae->showFace(viewer, F);
+    }
+
+    if (ImGui::Button("Show reconstructed face", ImVec2(-1,0))) {
+        vae->setWeightsReconstructedFace();
+        vae->showReconstructedFace(viewer, F);
+        
+    }
+
+    if (ImGui::Button("Show error to face index", ImVec2(-1,0))) {
+        vae->showError(viewer);
+    }
+
+    ImGui::End();
+}
+
 void clear_all_data(){
     for(size_t i=0; i<viewer.data_list.size(); i++){
         viewer.selected_data_index = i;
@@ -645,6 +701,13 @@ void setup_gui(ImGuiMenu &menu) {
                     prev_mode = current_mode;
                     current_mode = 4;
                 }
+                if (ImGui::MenuItem("Bonus Task 2")) {
+                    if(current_mode != 0 || prev_mode != 5){
+                        reset_visibility_and_clear_all_data();
+                    }
+                    prev_mode = current_mode;
+                    current_mode = 5;
+                }
                 ImGui::EndMenu();
             }
             ImGui::SameLine(ImGui::GetWindowWidth()-70);
@@ -659,6 +722,7 @@ void setup_gui(ImGuiMenu &menu) {
             case 2: draw_landmark_selection_window(menu); break;
             case 3: draw_face_registration_window(menu); break;
             case 4: draw_pca_computation_window(menu); break;
+            case 5: draw_bonus_task_window(menu); break;
             default: break;
         }
     };
