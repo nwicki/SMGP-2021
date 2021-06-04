@@ -24,13 +24,13 @@ Additionally, a section is dedicated to the GUI and bonus tasks are discussed at
 
 **Relevant files:** `Preprocessor.h|.cpp`
 
-Even though the scan faces from the dataset are supposed to be cleaned already, we observed that some meshes still contain multiple connected components and/or have rough boundaries. That is why we decided to do our own preprocessing on the dataset in five steps:
+Even though the scanned faces from the dataset are supposed to be cleaned already, we observed that some meshes still contain multiple connected components and/or have rough boundaries. That is why we decided to do our own preprocessing on the dataset in five steps:
 
-+ **Clean connected components**: find the largest connected components using `igl::facet_components`, remove the others. We also delete loose vertices and redirect face indices using `igl::remove_unreferenced`.
-+ **Compute distance field to boundary**: compute the closest distance to boundary for each vertex in the mesh. Ideally this should be geodesic distance, but since we will only be interested in points that are near the boundary, Euclidean distance is fine. This is done with nearest neighbor search using a KD-tree structure.
-+ **Smooth distance field**: using the energy optimization formulation seen in the lectures, we smooth the scalar field to get smoother isolines. This seemed to be more stable than smoothing with the cotan Laplacian.
-+ **Remesh along isoline**: create additional edges and vertices along a given isoline of the scalar distance field using `igl::remesh_along_isoline`.
-+ **Cut mesh and remove the boundaries**: cut the mesh along the isoline and keep only the main component (same as step 1). We use `igl::cut_mesh`.
++ **Clean connected components**: Find the largest connected components using `igl::facet_components`, remove the others. We also delete loose vertices and redirect face indices using `igl::remove_unreferenced`.
++ **Compute distance field to boundary**: Compute the closest distance to boundary for each vertex in the mesh. Ideally this should be geodesic distance, but since we will only be interested in points that are near the boundary, Euclidean distance is fine. This is done with nearest neighbor search using a KD-tree structure.
++ **Smooth distance field**: Using the energy optimization formulation seen in the lectures, we smooth the scalar field to get smoother isolines. This seemed to be more stable than smoothing with the cotan Laplacian.
++ **Remesh along isoline**: Create additional edges and vertices along a given isoline of the scalar distance field using `igl::remesh_along_isoline`.
++ **Cut mesh and remove the boundaries**: Cut the mesh along the isoline and keep only the main component (same as step 1). We use `igl::cut_mesh`.
 
 | 0. Initial scanned face | 1. Keep largest component | 2. Compute distance field | 
 |:--:|:--:|:--:|
@@ -47,7 +47,7 @@ The remeshing function in libigl creates duplicate vertices that we remove using
 
 **Relevant files:** `LandmarkSelector.h|.cpp`
 
-We used 23 landmarks. Those are the same landmarks as the example landmarks provided by the TA's.
+We used 23 landmarks. Those are the same landmarks as the example landmarks provided by the TAs.
 
 <img width="25%"><img src="results/landmark-selection.png" alt="drawing" width="50%">
 
@@ -56,10 +56,10 @@ To specify a landmark the user enables selection and clicks on the face mesh. A 
 The intersection is then stored as a landmark which consists of:
 
 +  index of the face (triangle) of the intersection
-+  barycenter coordinates of the point within the triangle
++  barycentric coordinates of the point within the triangle
 
 We chose this format for the landmarks because it allows us to specify landmarks with arbitrary precision.
-The landmarks are identified by their index in the list of landmarks. So they must be added in the order of the image above.
+The landmarks are identified by their index in the list of landmarks. So, they must be added in the order of the image above.
 
 Once the 23 landmarks have been specified one can save the landmarks to a text file next to the obj file such that they can be loaded from there again for later use.
 
@@ -88,20 +88,20 @@ As a general observation, the noses are often not well aligned after applying ri
 
 **Relevant files:** `FaceRegistor.h|.cpp`
 
-In order to perform PCA on the scanned faces we first need to register them with a common triangulation (template). Once the faces are rigidly aligned, we need to warp the template to match closely the surface of the scanned faces.
+In order to perform PCA on the scanned faces, we first need to register them with a common triangulation (template). Once the faces are rigidly aligned, we need to warp the template to match closely the surface of the scanned faces.
 
 This is done in an iterative manner by solving repeatedly a linear system involving several terms. 
 
 <img width="35%"><img src="results/4-system.png" width="30%">
 
-+ **Laplacian smoothing term**: encourages the warped mesh to be as smooth as itself from the previous iteration.
-+ **Boundary constraints**: enforces the vertices at the boundary of the template mesh to stay still.
-+ **Landmark constraints**: enforces the position of the landmarks on the template to match the one of those on the scanned face.
-+ **Dynamic constraints**: when a vertex of the template becomes close enough to a vertex on the scanned mesh, encourage it to match it exactly. These constraints change at every iteration and the threshold for "how close is close" is determined by the parameter `epsilon`. 
++ **Laplacian smoothing term**: Encourages the warped mesh to be as smooth as itself from the previous iteration.
++ **Boundary constraints**: Enforces the vertices at the boundary of the template mesh to stay still.
++ **Landmark constraints**: Enforces the position of the landmarks on the template to match the one of those on the scanned face.
++ **Dynamic constraints**: When a vertex of the template becomes close enough to a vertex on the scanned mesh, encourage it to match it exactly. These constraints change at every iteration and the threshold for "how close is close" is determined by the parameter `epsilon`. 
 
 While most of the constraints leads to rows in the system matrix to be zero except at one position where it is 1, the landmark constraints are a bit different. In fact, since our landmarks are precise points on a mesh defined by barycenter coordinates on a given triangular face, the landmark constraints actually give rise to rows with 3 non-zero values that sum up to 1. Thus, if we want to keep this precision (instead of assigning to the nearest vertex), we cannot use the substitution method as in Assignment 5.
 
-Here are the result for each iteration:
+Here are the results for each iteration:
 
 | Iteration 0 (rigid aligned) | Iteration 1 | Iteration 2 | Iteration 3 |
 |:---:|:---:|:---:|:---:|
@@ -111,7 +111,7 @@ Here are the result for each iteration:
 |:---:|:---:|:---:|:---:|
 |<img src="results/4-step4.png" width="100%"> |<img src="results/4-step5.png" width="100%"> |<img src="results/4-step5.png" width="100%"> | <img src="results/4-reference.png" width="100%"> |
 
-In general we perform the first iteration with a very small `epsilon` (e.g. = 0.01) so that there are no dynamic constraints. This makes sure that we first match the landmarks. Then,  the subsequent iterations are performed with a larger `epsilon` (~ 3.0). 
+In general, we perform the first iteration with a very small `epsilon` (e.g. = 0.01) so that there are no dynamic constraints. This makes sure that we first match the landmarks. Then,  the subsequent iterations are performed with a larger `epsilon` (~ 3.0). 
  
 Solving the system above turned out to be slow because it is a rectangular matrix and corresponding solvers in `Eigen` are not as fast as the Simplicial Cholesky solver we used in Assignment 5. However, we can transform the system to obtain one with a square matrix which is SPD (as shown below). This allows us to use fast solvers for SPD matrices and get interactive computation rates even on the larger templates.
 
@@ -159,7 +159,7 @@ Here, we show how the morphing mechanism works, and also an example of what it c
 
 To ensure modularity, the GUI contains a menu bar for selecting the desired menu. Each menu is associated with a specific task of the pipeline and can be viewed as an application on its own. There are six menus:
 
-+ **Viewer**: shows the default viewer menu. It is possible to select this menu without loosing the ongoing task.
++ **Viewer**: Shows the default viewer menu. It is possible to select this menu without loosing the ongoing task.
 + **Preprocessing**
 + **Landmark Selection**
 + **Face Registration** (rigid & non-rigid alignment)
