@@ -45,6 +45,7 @@ The remeshing function in libigl creates duplicate vertices that we remove using
 **Relevant files:** `LandmarkSelector.h|.cpp`
 
 We used 23 landmarks. Those are the same landmarks as the example landmarks provided by the TA's.
+
 <img width="25%"><img src="results/landmark-selection.png" alt="drawing" width="50%">
 
 To specify a landmark the user enables selection and clicks on the face mesh. A ray is cast in the view direction starting from the mouse position and the intersection with the mesh is calculated.
