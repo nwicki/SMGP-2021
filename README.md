@@ -1,10 +1,6 @@
 # SMGP-2021 - Group 1
 ## Shape modeling and geometry processing project
 
-Get the all_data folder from https://polybox.ethz.ch/index.php/s/lRKp9AjerxiQSzC
-
-Put all folders in the all_data.zip into the data folder (if you are confused, look at the gitignore)
-
 **To run the code:** Please use our version of libigl. Also, the app requires Boost filesystem to be installed in order to run. Refer to the boost website for installation instructions: https://www.boost.org/doc/libs/1_66_0/more/getting_started/unix-variants.html. On macOS, you can use Homebrew to install it.
 
 # Assignment 6 - Report
@@ -169,7 +165,7 @@ To ensure modularity, the GUI contains a menu bar for selecting the desired menu
 
 ### Preprocessing UI
 
-<img src="assignment6/assignment6/results/UI-preprocessing_general.png" width="100%">
+<img src="assignment6/results/UI-preprocessing_general.png" width="100%">
 
 **To preprocess a mesh manually:**
 
