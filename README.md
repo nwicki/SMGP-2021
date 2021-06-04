@@ -34,11 +34,11 @@ Even though the scanned faces from the dataset are supposed to be cleaned alread
 
 | 0. Initial scanned face | 1. Keep largest component | 2. Compute distance field | 
 |:--:|:--:|:--:|
-|<img src="results/1-initial.png" width="100%"> | <img src="results/1-removeCC.png" width="100%"> | <img src="results/1-distance.png" width="100%"> |
+|<img src="assignment6/results/1-initial.png" width="100%"> | <img src="assignment6/results/1-removeCC.png" width="100%"> | <img src="assignment6/results/1-distance.png" width="100%"> |
 
 | 3. Smooth distance field | 4. Remesh along isoline | 5. Cut & keep largest |
 |:--:|:--:|:--:|
- <img src="results/1-smooth.png" width="100%"> | <img src="results/1-remesh.png" width="100%"> | <img src="results/1-cut.png" width="100%"> |
+ <img src="assignment6/results/1-smooth.png" width="100%"> | <img src="assignment6/results/1-remesh.png" width="100%"> | <img src="assignment6/results/1-cut.png" width="100%"> |
 
 The remeshing function in libigl creates duplicate vertices that we remove using `igl::remove_duplicate_vertices`. However, the resulting mesh can (in rare cases) become not edge-manifold. Because the remeshing requires edge-manifold meshes as input, the preprocessing is skipped for these few meshes (~ 3 out of 112).
 
@@ -49,7 +49,7 @@ The remeshing function in libigl creates duplicate vertices that we remove using
 
 We used 23 landmarks. Those are the same landmarks as the example landmarks provided by the TAs.
 
-<img width="25%"><img src="results/landmark-selection.png" alt="drawing" width="50%">
+<img width="25%"><img src="assignment6/results/landmark-selection.png" alt="drawing" width="50%">
 
 To specify a landmark the user enables selection and clicks on the face mesh. A ray is cast in the view direction starting from the mouse position and the intersection with the mesh is calculated.
 
@@ -79,7 +79,7 @@ It is the scanned face that is rotated so that the registered faces (template) a
 
 | Non aligned scan & template | Center & scale | Rotated & aligned | 
 |:--:|:--:|:--:|
-|<img src="results/3-initial.png" width="100%"> | <img src="results/3-centernscale.png" width="100%"> | <img src="results/3-aligned.png" width="100%"> |
+|<img src="assignment6/results/3-initial.png" width="100%"> | <img src="assignment6/results/3-centernscale.png" width="100%"> | <img src="assignment6/results/3-aligned.png" width="100%"> |
 
 As a general observation, the noses are often not well aligned after applying rigid alignment. This is where non-rigid warping comes in.
 
@@ -92,7 +92,7 @@ In order to perform PCA on the scanned faces, we first need to register them wit
 
 This is done in an iterative manner by solving repeatedly a linear system involving several terms. 
 
-<img width="35%"><img src="results/4-system.png" width="30%">
+<img width="35%"><img src="assignment6/results/4-system.png" width="30%">
 
 + **Laplacian smoothing term**: Encourages the warped mesh to be as smooth as itself from the previous iteration.
 + **Boundary constraints**: Enforces the vertices at the boundary of the template mesh to stay still.
@@ -105,17 +105,17 @@ Here are the results for each iteration:
 
 | Iteration 0 (rigid aligned) | Iteration 1 | Iteration 2 | Iteration 3 |
 |:---:|:---:|:---:|:---:|
-|<img src="results/4-step0.png" width="100%"> |<img src="results/4-step1.png" width="100%"> |<img src="results/4-step2.png" width="100%"> |<img src="results/4-step3.png" width="100%"> |
+|<img src="assignment6/results/4-step0.png" width="100%"> |<img src="assignment6/results/4-step1.png" width="100%"> |<img src="assignment6/results/4-step2.png" width="100%"> |<img src="assignment6/results/4-step3.png" width="100%"> |
 
 | Iteration 4 | Iteration 5 | Iteration 6 | Reference scanned face|
 |:---:|:---:|:---:|:---:|
-|<img src="results/4-step4.png" width="100%"> |<img src="results/4-step5.png" width="100%"> |<img src="results/4-step5.png" width="100%"> | <img src="results/4-reference.png" width="100%"> |
+|<img src="assignment6/results/4-step4.png" width="100%"> |<img src="assignment6/results/4-step5.png" width="100%"> |<img src="assignment6/results/4-step5.png" width="100%"> | <img src="assignment6/results/4-reference.png" width="100%"> |
 
 In general, we perform the first iteration with a very small `epsilon` (e.g. = 0.01) so that there are no dynamic constraints. This makes sure that we first match the landmarks. Then,  the subsequent iterations are performed with a larger `epsilon` (~ 3.0). 
  
 Solving the system above turned out to be slow because it is a rectangular matrix and corresponding solvers in `Eigen` are not as fast as the Simplicial Cholesky solver we used in Assignment 5. However, we can transform the system to obtain one with a square matrix which is SPD (as shown below). This allows us to use fast solvers for SPD matrices and get interactive computation rates even on the larger templates.
 
-<img width="35%"><img src="results/4-solve_trick.png" width="30%">
+<img width="35%"><img src="assignment6/results/4-solve_trick.png" width="30%">
 
 We observed that reducing `lambda` gives smoother results especially on the boundaries of the scan mesh, but doing less iterations seems to give similar results. We set `lambda=1`.
 
@@ -137,19 +137,20 @@ Compute the PCA from which we can reconstruct the most dominant Eigen vectors of
 To most accurately represent the original faces using those Eigen faces, we compute the dot product between the offset, and the Eigen faces to compute the weight for each Eigen face. Using these weights we can reconstruct the original faces through a linear combination of all Eigen faces scaled by those weights added to the mean face.
 
 Here, we show the progression of the face reconstruction when using increasingly more Eigen faces:
+
 | Mean face | 1 Eigen face | 5 Eigen faces | 10 Eigen faces |
 |:---:|:---:|:---:|:---:|
-|<img src="results/5-mean-face.png" width="100%"> |<img src="results/5-one-eigen-face.png" width="100%"> |<img src="results/5-five-eigen-faces.png" width="100%"> |<img src="results/5-ten-eigen-faces.png" width="100%"> |
+|<img src="assignment6/results/5-mean-face.png" width="100%"> |<img src="assignment6/results/5-one-eigen-face.png" width="100%"> |<img src="assignment6/results/5-five-eigen-faces.png" width="100%"> |<img src="assignment6/results/5-ten-eigen-faces.png" width="100%"> |
 
 | 15 Eigen faces | 20 Eigen faces | 25 Eigen faces | Original face|
 |:---:|:---:|:---:|:---:|
-|<img src="results/5-15-eigen-faces.png" width="100%"> |<img src="results/5-20-eigen-faces.png" width="100%"> |<img src="results/5-25-eigen-faces.png" width="100%"> | <img src="results/5-original-face.png" width="100%"> |
+|<img src="assignment6/results/5-15-eigen-faces.png" width="100%"> |<img src="assignment6/results/5-20-eigen-faces.png" width="100%"> |<img src="assignment6/results/5-25-eigen-faces.png" width="100%"> | <img src="assignment6/results/5-original-face.png" width="100%"> |
 
 **Compute morphing:**
 We continued with the implementation of a morphing mechanism which is computed by linearly interpolating offsets (linear combinations of Eigen faces) of two faces and adding them to the mean face. This enables morphing from one face to another.
 
 Here, we show how the morphing mechanism works, and also an example of what it can look like if we first manually adjust the weights, and then morph with a face from the dataset.
-<img src="results/5-morph-face.gif" width="100%"/>
+<img src="assignment6/results/5-morph-face.gif" width="100%"/>
 
 
 [1]: Matthew Turk and Alex Pentland. 1991. Eigenfaces for recognition. J. Cognitive Neuroscience 3, 1 (Winter 1991), 71–86. DOI:https://doi.org/10.1162/jocn.1991.3.1.71
@@ -168,7 +169,7 @@ To ensure modularity, the GUI contains a menu bar for selecting the desired menu
 
 ### Preprocessing UI
 
-<img src="results/UI-preprocessing_general.png" width="100%">
+<img src="assignment6/assignment6/results/UI-preprocessing_general.png" width="100%">
 
 **To preprocess a mesh manually:**
 
@@ -195,7 +196,7 @@ Simply select `Preprocess all` at the bottom of the menu. All meshes will be pre
 
 ### Landmark Selection UI
 
-<img src="results/UI-landmark_general.png" width="100%">
+<img src="assignment6/results/UI-landmark_general.png" width="100%">
 
 **Select a mesh in the file browser**
 
@@ -212,7 +213,7 @@ Simply select `Preprocess all` at the bottom of the menu. All meshes will be pre
 
 ### Face Registration UI
 
-<img src="results/UI-registration_general.png" width="100%">
+<img src="assignment6/results/UI-registration_general.png" width="100%">
 
 **To register a face manually:**
 
@@ -237,7 +238,7 @@ Simply select `Register all` at the bottom of the menu. All meshes will be regis
 
 ### PCA UI
 
-<img src="results/UI-PCA_general.png" width="100%">
+<img src="assignment6/results/UI-PCA_general.png" width="100%">
 The UI supports the adjustment of the weights for each Eigen face and allows morphing between two faces.
 
 As additional features, we implemented:
@@ -251,7 +252,7 @@ As additional features, we implemented:
 + `Show average face`: It shows the mean face of the dataset. Since it is no face available in the dataset the face index below will be set to -1.
 + `Face index`: The face index interface allows decreasing/increasing the face index and scroll through each face in the dataset.
 + `Show face`: This shows the currently selected face from the dataset should any other mesh have been displayed in the meantime.
-<img src="results/6-UI-PCA-choose-dataset.gif" width="100%" />
+<img src="assignment6/results/6-UI-PCA-choose-dataset.gif" width="100%" />
 
 **To compute linear combinations of Eigen faces:**
 + `#Eigen faces`: The next integer input allows the user to adjust the amount of Eigen faces used to adjust the face offset computed through a linear combination of all Eigen faces weighted with the chosen weight in the range [-1,1]. The weights of each Eigen face can be adjusted through the listed sliders starting at Eigen face 0.
@@ -259,14 +260,14 @@ As additional features, we implemented:
 + `Set weight approximated face`: This set the weights chosen by the above sliders according to the current face index and tries to approximate it as close as possible.
 + `Show face with current weights`: This button lets you display the mean face with a linear combination of Eigen faces weighted according to the weight specified using the sliders for each Eigen face. 
 + `Show error to face index`: This displays a coloured visualization of the distance between the computed offset using a linear combination of the Eigen faces added to the mean face and the face chosen by the face index.
-<img src="results/6-UI-PCA-eigen-faces.gif" width="100%" />
+<img src="assignment6/results/6-UI-PCA-eigen-faces.gif" width="100%" />
 
 **To morph between two faces:**
 + `Morph face index`: Specifies the face index of a face from the dataset which we will morph with the linear combination of Eigen faces currently chosen.
 + `Morph rate`: This scalar lets the user linearly interpolate between the two faces chosen for the morph process.
 + `Show morphed face`: This button lets the user display the result of the morph process should any other mesh have been displayed in the meantime.
 + `Save mesh`: This button lets the user save the displayed mesh to the folder `data/pca-results`.
-<img src="results/6-UI-PCA-morph-face.gif" width="100%" />
+<img src="assignment6/results/6-UI-PCA-morph-face.gif" width="100%" />
 
 
 ## Bonus Tasks
@@ -277,7 +278,7 @@ As additional features, we implemented:
 
 We haven't all been able to scan our face using the mobile app, but we still managed to get from a few members. Here is an example of a scan we did using the app Bellus3D:
 
-<img width="30%"><img src="results/Bonus-1-scan.jpeg" width="40%" />
+<img width="30%"><img src="assignment6/results/Bonus-1-scan.jpeg" width="40%" />
 
 We did not try to register the scanned face but there is no obvious reason why our pipeline wouldn't work with our own scans.
 
@@ -289,7 +290,7 @@ For this bonus task, we decided to look into Variational Autoencoders as they se
 
 #### Architecture
 
-<img width="10%"><img src="results/Bonus-2-architecture.png" width="80%" />
+<img width="10%"><img src="assignment6/results/Bonus-2-architecture.png" width="80%" />
 
 Our model is made of a 3-layer encoder and 3-layer decoder. The encoder takes as input a vectorized list of mesh vertices (always in the same order) and produces a mean and a log-variance, which are then used to randomly sample the latent variable. The latent variable then goes through the decoder until it gets to the input dimension. The output is then reshaped to form the mesh (the face indices are fixed in our work).
 
@@ -307,8 +308,8 @@ We also track the loss on the evaluation set (without using it from the gradient
 
 || Reconstruction loss | KL divergence | Total loss
 |:--:|:--:|:--:|:--:|
-Train|<img src="results/Bonus-2-recloss_train.png" width="100%">|<img src="results/Bonus-2-kldloss_train.png" width="100%">|<img src="results/Bonus-2-totloss_train.png" width="100%">|
-Test|<img src="results/Bonus-2-recloss_eval.png" width="100%">|<img src="results/Bonus-2-kldloss_eval.png" width="100%">|<img src="results/Bonus-2-totloss_eval.png" width="100%">|
+Train|<img src="assignment6/results/Bonus-2-recloss_train.png" width="100%">|<img src="assignment6/results/Bonus-2-kldloss_train.png" width="100%">|<img src="assignment6/results/Bonus-2-totloss_train.png" width="100%">|
+Test|<img src="assignment6/results/Bonus-2-recloss_eval.png" width="100%">|<img src="assignment6/results/Bonus-2-kldloss_eval.png" width="100%">|<img src="assignment6/results/Bonus-2-totloss_eval.png" width="100%">|
 
 
 #### C++ integration
@@ -322,13 +323,14 @@ We also implemented manually the VAE decoder in C++ allowing us to reconstruct t
 #### Results
 
 Finally, here are some results compared to PCA.
+
 |Reference (test)| VAE (learning-based) | error ~ 1.98 | PCA | error ~ 0.93|
 |:--:|:--:|:--:|:--:|:--:|
-|<img src="results/Bonus-2-result-test-ref.png" width="100%">|<img src="results/Bonus-2-result-test-vae.png" width="100%">|<img src="results/Bonus-2-result-test-vae_err.png" width="100%">|<img src="results/Bonus-2-result-test-pca.png" width="100%">|<img src="results/Bonus-2-result-test-pca_err.png" width="100%">
+|<img src="assignment6/results/Bonus-2-result-test-ref.png" width="100%">|<img src="assignment6/results/Bonus-2-result-test-vae.png" width="100%">|<img src="assignment6/results/Bonus-2-result-test-vae_err.png" width="100%">|<img src="assignment6/results/Bonus-2-result-test-pca.png" width="100%">|<img src="assignment6/results/Bonus-2-result-test-pca_err.png" width="100%">
 
 |Reference (train)| VAE (learning-based) | error ~ 1.33 | PCA | error ~ 0.96|
 |:--:|:--:|:--:|:--:|:--:|
-|<img src="results/Bonus-2-result-train-ref.png" width="100%">|<img src="results/Bonus-2-result-train-vae.png" width="100%">|<img src="results/Bonus-2-result-train-vae_err.png" width="100%">|<img src="results/Bonus-2-result-train-pca.png" width="100%">|<img src="results/Bonus-2-result-train-pca_err.png" width="100%">
+|<img src="assignment6/results/Bonus-2-result-train-ref.png" width="100%">|<img src="assignment6/results/Bonus-2-result-train-vae.png" width="100%">|<img src="assignment6/results/Bonus-2-result-train-vae_err.png" width="100%">|<img src="assignment6/results/Bonus-2-result-train-pca.png" width="100%">|<img src="assignment6/results/Bonus-2-result-train-pca_err.png" width="100%">
 
 
  The first row is a mesh from the test set while the second row is one from the training set. We observe that the reconstruction error is lower for meshes in the training set, which is expected. However, even on the training set, PCA still does better.
