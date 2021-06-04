@@ -4,6 +4,8 @@
 Get the all_data folder from https://polybox.ethz.ch/index.php/s/lRKp9AjerxiQSzC
 Put all folders in the all_data.zip into the data folder (if you are confused, look at the gitignore)
 
+**To run the code:** please use our version of libigl. Also the app requires Boost filesystem to be installed in order to run.
+
 # Assignment 6 - Report
 
 In this group assignment, we apply geometry processing to a real dataset of scanned 3D faces in order to perform morphing between them. The pipeline is made of the following 5 steps that we will cover in detail in this report:
