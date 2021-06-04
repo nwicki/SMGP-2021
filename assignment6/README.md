@@ -4,7 +4,7 @@
 Get the all_data folder from https://polybox.ethz.ch/index.php/s/lRKp9AjerxiQSzC
 Put all folders in the all_data.zip into the data folder (if you are confused, look at the gitignore)
 
-**To run the code:** please use our version of libigl. Also the app requires Boost filesystem to be installed in order to run.
+**To run the code:** Please use our version of libigl. Also, the app requires Boost filesystem to be installed in order to run. Refer to the boost website for installation instructions: https://www.boost.org/doc/libs/1_66_0/more/getting_started/unix-variants.html. On macOS, you can use Homebrew to install it.
 
 # Assignment 6 - Report
 
@@ -135,6 +135,7 @@ Compute the PCA from which we can reconstruct the most dominant Eigen vectors of
 **Compute weights for approximation:**
 To most accurately represent the original faces using those Eigen faces, we compute the dot product between the offset, and the Eigen faces to compute the weight for each Eigen face. Using these weights we can reconstruct the original faces through a linear combination of all Eigen faces scaled by those weights added to the mean face.
 
+Here, we show the progression of the face reconstruction when using increasingly more Eigen faces:
 | Mean face | 1 Eigen face | 5 Eigen faces | 10 Eigen faces |
 |:---:|:---:|:---:|:---:|
 |<img src="results/5-mean-face.png" width="100%"> |<img src="results/5-one-eigen-face.png" width="100%"> |<img src="results/5-five-eigen-faces.png" width="100%"> |<img src="results/5-ten-eigen-faces.png" width="100%"> |
@@ -145,6 +146,8 @@ To most accurately represent the original faces using those Eigen faces, we comp
 
 **Compute morphing:**
 We continued with the implementation of a morphing mechanism which is computed by linearly interpolating offsets (linear combinations of Eigen faces) of two faces and adding them to the mean face. This enables morphing from one face to another.
+
+Here, we show how the morphing mechanism works, and also an example of what it can look like if we first manually adjust the weights, and then morph with a face from the dataset.
 <img src="results/5-morph-face.gif" width="100%"/>
 
 
