@@ -278,6 +278,8 @@ We haven't all been able to scan our face using the mobile app, but we still man
 
 We did not try to register the scanned face but there is no obvious reason why our pipeline wouldn't work with our own scans.
 
+Find the scanned faces in the zip file: `bonus-task-1.zip`
+
 ### Bonus Task 2
 
 **Worked on by:** Pascal Chang
@@ -339,7 +341,7 @@ Finally, here are some results compared to PCA.
 
 If you wish to run the code for this bonus task, please follow the instructions below:
 
-+ Unzip `gp21-ex6-bonus.zip` and navigate to its root using command line. 
++ Unzip `bonus-task-2.zip` and navigate to its root using command line. 
 + Inside the folder, run `source init_venv.sh`. This will load the necessary modules (if using Leonhard cluster for example), create a virtual environment and install the required packages listed in `requirements.txt`. 
 + If you wish to log the metrics to Comet.ml, fill in the file `.comet.config` with your information (Comet API key, project name and workspace). As a hint, mine looks like this:
 ```
