@@ -334,7 +334,7 @@ Finally, here are some results compared to PCA.
 
 If you wish to run the code for this bonus task, please follow the instructions below:
 
-+ Using command line, navigate to the subfolder `gp21_ex6_bonus`. 
++ Unzip `gp21-ex6-bonus.zip` and navigate to its root using command line. 
 + Inside the folder, run `source init_venv.sh`. This will load the necessary modules (if using Leonhard cluster for example), create a virtual environment and install the required packages listed in `requirements.txt`. 
 + If you wish to log the metrics to Comet.ml, fill in the file `.comet.config` with your information (Comet API key, project name and workspace). As a hint, mine looks like this:
 ```
@@ -357,3 +357,5 @@ python code/main.py --export m f o --load $EXP_KEY
 ```
 
 Alternatively `$EXP_KEY` can be replaced by the string `vae` which is the name of the trained model used to generate the results above. For the GUI to work in C++, one must export the **m**odel weights, the **f**eatures (latent variables) and the **o**riginal meshes should also be in the folder (hence the arguments of `--export`). Once the export is complete, a folder `vae_faces` will be created/updated in the root of the bonus project. **Copy this folder to `assignment6/data/`** overwriting existing one if necessary. Now launching the libigl GUI should allow you to see the VAE results with the newly exported outputs.
+
+**Note:** The code for bonus task 2 has only been tested on Leonahrd cluster and a MacBook Pro running macOS Mojave with an intel Core i5. Small changes may need to be made in order to run in other environments. For Leonhard, some issues might arise regarding the use of GPU, but the code works fine on CPU.
