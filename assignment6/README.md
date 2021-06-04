@@ -24,7 +24,7 @@ Additionally, a section is dedicated to the GUI and bonus tasks are discussed at
 Even though the scan faces from the dataset are supposed to be cleaned already, we observed that some meshes still contain multiple connected components and/or have rough boundaries. That is why we decided to do our own preprocessing on the dataset in five steps:
 
 + **Clean connected components**: find the largest connected components using `igl::facet_components`, remove the others. We also delete loose vertices and redirect face indices using `igl::remove_unreferenced`.
-+ **Compute distance field to boundary**: compute the closest distance to boundary for each vertex in the mesh. Ideally this should be geodesic distance, but since we will only interested in points that are near the boundary, Euclidean distance is fine. This is done with nearest neighbor search using a KD-tree structure.
++ **Compute distance field to boundary**: compute the closest distance to boundary for each vertex in the mesh. Ideally this should be geodesic distance, but since we will only be interested in points that are near the boundary, Euclidean distance is fine. This is done with nearest neighbor search using a KD-tree structure.
 + **Smooth distance field**: using the energy optimization formulation seen in the lectures, we smooth the scalar field to get smoother isolines. This seemed to be more stable than smoothing with the cotan Laplacian.
 + **Remesh along isoline**: create additional edges and vertices along a given isoline of the scalar distance field using `igl::remesh_along_isoline`.
 + **Cut mesh and remove the boundaries**: cut the mesh along the isoline and keep only the main component (same as step 1). We use `igl::cut_mesh`.
@@ -64,7 +64,7 @@ Once the 23 landmarks have been specified one can save the landmarks to a text f
 
 **Relevant files:** `FaceRegistor.h|.cpp`
 
-Rigid alignment is a necessary step before warping the template mesh to the scanned face. This is done by first centering both:
+Rigid alignment is a necessary step before warping the template mesh to the scanned face. This is done in several substeps:
 
 + **Center the scanned face and the template** such that the barycenter of their landmarks is at the origin.
 + **Re-scale the template** such that the average distance to the mean landmark is the same as the scanned face.
@@ -142,7 +142,7 @@ To most accurately represent the original faces using those Eigen faces, we comp
 
 **Compute morphing:**
 We continued with the implementation of a morphing mechanism which is computed by linearly interpolating offsets (linear combinations of Eigen faces) of two faces and adding them to the mean face. This enables morphing from one face to another.
-<img src="results/5-morph-face.gif" width="1000" height="500" />
+<img src="results/5-morph-face.gif" width="100%"/>
 
 
 [1]: Matthew Turk and Alex Pentland. 1991. Eigenfaces for recognition. J. Cognitive Neuroscience 3, 1 (Winter 1991), 71–86. DOI:https://doi.org/10.1162/jocn.1991.3.1.71
@@ -150,13 +150,14 @@ We continued with the implementation of a morphing mechanism which is computed b
 ## 6. UI
 **Worked on by**: Whole group
 
-To ensure modularity, the GUI contains a menu bar for selecting the desired menu. Each menu is associated with a specific task of the pipeline and can be viewed as an application on its own. There are five menus:
+To ensure modularity, the GUI contains a menu bar for selecting the desired menu. Each menu is associated with a specific task of the pipeline and can be viewed as an application on its own. There are six menus:
 
 + **Viewer**: shows the default viewer menu. It is possible to select this menu without loosing the ongoing task.
 + **Preprocessing**
 + **Landmark Selection**
 + **Face Registration** (rigid & non-rigid alignment)
 + **PCA Computation**
++ **Bonus Task 2**
 
 ### Preprocessing UI
 
@@ -181,7 +182,7 @@ Simply select `Save mesh`. The current mesh (preprocessed or not) will be saved 
 
 **To preprocess all the meshes automatically and save them:**
 
-Simply select `Preprocess all` at the bottom of the menu. All meshes will be preprocessed with isolue of 3 and saved to the `data/preprocessed_faces` folder (overwriting existing ones if any).
+Simply select `Preprocess all` at the bottom of the menu. All meshes will be preprocessed with iso value of 3 and saved to the `data/preprocessed_faces` folder (overwriting existing ones if any).
 
 
 
@@ -309,7 +310,7 @@ While the training was done in Python using Pytorch, we wanted to be able to vis
 
 An additional menu was thus added to our GUI with the name `Bonus Task 2`. The interface is very similar to the one for PCA, except that eigen faces are now features (components of the latent variable). 
 
-We also implemented manually the decoder in C++ allowing us to reconstruct the mesh vertices from any latent variable sample directly inside the C++ code. This means the user can have the same freedom to adjust the feature weights as in PCA and see the resulting mesh at interactive rates.
+We also implemented manually the VAE decoder in C++ allowing us to reconstruct the mesh vertices from any latent variable sample directly inside the C++ code. This means the user can have the same freedom to adjust the feature weights as in PCA and see the resulting mesh at interactive rates.
 
 #### Results
 
