@@ -422,7 +422,7 @@ void draw_face_registration_window(ImGuiMenu &menu) {
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.15f, 0.9f, 0.3f, 1.0f));
     ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.0f, 0.8f, 0.2f, 1.0f));
     if (ImGui::Button("Register", ImVec2(-1, 0))) {
-        faceRegistor.register_face(V_tmpl, F_tmpl, V, F);
+        faceRegistor.register_face(V_tmpl, F_tmpl, V, F, 4);
         set_mesh(V_tmpl, F_tmpl, 0);
         set_mesh(V, F, 1);
         cout << "Register face" << endl;
@@ -487,7 +487,7 @@ void draw_face_registration_window(ImGuiMenu &menu) {
             string tmpl_file_path = faceRegistor.tmpl_folder_path + faceRegistor.tmpl_names[faceRegistor.tmpl_id]+".obj";
             load_mesh(tmpl_file_path, V_tmpl, F_tmpl, 0);
             // register it (same code as register)
-            faceRegistor.register_face(V_tmpl, F_tmpl, V, F);
+            faceRegistor.register_face(V_tmpl, F_tmpl, V, F, 4);
             set_mesh(V_tmpl, F_tmpl, 0);
             set_mesh(V, F, 1);
             // save mesh

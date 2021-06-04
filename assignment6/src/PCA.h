@@ -61,6 +61,8 @@ public:
             "../data/aligned_faces_example/example1/",
             "../data/aligned_faces_example/example2/",
             "../data/aligned_faces_example/example3/",
+            "../data/aligned_faces_highres/",
+            "../data/aligned_faces_lowres/",
             "../data/aligned_faces/"
     };
     const string _PCA_Results = "../data/pca-results/";
