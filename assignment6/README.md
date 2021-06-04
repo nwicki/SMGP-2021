@@ -45,7 +45,7 @@ The remeshing function in libigl creates duplicate vertices that we remove using
 **Relevant files:** `LandmarkSelector.h|.cpp`
 
 We used 23 landmarks. Those are the same landmarks as the example landmarks provided by the TA's.
-<img src="results/landmark-selection.png" alt="drawing" width="500"/>
+<img width="20%"><img src="results/landmark-selection.png" alt="drawing" width="60%"/>
 
 To specify a landmark the user enables selection and clicks on the face mesh. A ray is cast in the view direction starting from the mouse position and the intersection with the mesh is calculated.
 
@@ -88,7 +88,7 @@ In order to perform PCA on the scanned faces we first need to register them with
 
 This is done in an iterative manner by solving repeatedly a linear system involving several terms. 
 
-<img width="25%"><img src="results/4-system.png" width="50%">
+<img width="35%"><img src="results/4-system.png" width="30%">
 
 + **Laplacian smoothing term**: encourages the warped mesh to be as smooth as itself from the previous iteration.
 + **Boundary constraints**: enforces the vertices at the boundary of the template mesh to stay still.
@@ -111,7 +111,7 @@ In general we perform the first iteration with a very small `epsilon` (e.g. = 0.
  
 Solving the system above turned out to be slow because it is a rectangular matrix and corresponding solvers in `Eigen` are not as fast as the Simplicial Cholesky solver we used in Assignment 5. However, we can transform the system to obtain one with a square matrix which is SPD (as shown below). This allows us to use fast solvers for SPD matrices and get interactive computation rates even on the larger templates.
 
-<img width="20%"><img src="results/4-solve_trick.png" width="60%">
+<img width="35%"><img src="results/4-solve_trick.png" width="30%">
 
 We observed that reducing `lambda` gives smoother results especially on the boundaries of the scan mesh, but doing less iterations seems to give similar results. We set `lambda=1`.
 
@@ -134,11 +134,11 @@ To most accurately represent the original faces using those Eigen faces, we comp
 
 | Mean face | 1 Eigen face | 5 Eigen faces | 10 Eigen faces |
 |:---:|:---:|:---:|:---:|
-|<img src="results/5-mean-face.png" width="120" height="200"> |<img src="results/5-one-eigen-face.png" width="120" height="200"> |<img src="results/5-five-eigen-faces.png" width="120" height="200"> |<img src="results/5-ten-eigen-faces.png" width="120" height="200"> |
+|<img src="results/5-mean-face.png" width="100%"> |<img src="results/5-one-eigen-face.png" width="100%"> |<img src="results/5-five-eigen-faces.png" width="100%"> |<img src="results/5-ten-eigen-faces.png" width="100%"> |
 
 | 15 Eigen faces | 20 Eigen faces | 25 Eigen faces | Original face|
 |:---:|:---:|:---:|:---:|
-|<img src="results/5-15-eigen-faces.png" width="120" height="200"> |<img src="results/5-20-eigen-faces.png" width="120" height="200"> |<img src="results/5-25-eigen-faces.png" width="120" height="200"> | <img src="results/5-original-face.png" width="120" height="200"> |
+|<img src="results/5-15-eigen-faces.png" width="100%"> |<img src="results/5-20-eigen-faces.png" width="100%"> |<img src="results/5-25-eigen-faces.png" width="100%"> | <img src="results/5-original-face.png" width="100%"> |
 
 **Compute morphing:**
 We continued with the implementation of a morphing mechanism which is computed by linearly interpolating offsets (linear combinations of Eigen faces) of two faces and adding them to the mean face. This enables morphing from one face to another.
@@ -148,7 +148,7 @@ We continued with the implementation of a morphing mechanism which is computed b
 [1]: Matthew Turk and Alex Pentland. 1991. Eigenfaces for recognition. J. Cognitive Neuroscience 3, 1 (Winter 1991), 71–86. DOI:https://doi.org/10.1162/jocn.1991.3.1.71
 
 ## 6. UI
-**Worked on by**: Whole group (most credit goes to Pascal Chang)
+**Worked on by**: Whole group
 
 To ensure modularity, the GUI contains a menu bar for selecting the desired menu. Each menu is associated with a specific task of the pipeline and can be viewed as an application on its own. There are five menus:
 
@@ -261,3 +261,98 @@ As additional features, we implemented:
 <img src="results/6-UI-PCA-morph-face.gif" width="1000" height="500" />
 
 
+## Bonus Tasks
+
+### Bonus Task 1
+
+**Worked on by:** Franz Knobel & Nicolas Wicki
+
+We haven't all been able to scan our face using the mobile app, but we still managed to get from a few members. Here is an example of a scan we did using the app Bellus3D:
+
+<img width="30%"><img src="results/Bonus-1-scan.jpeg" width="40%" />
+
+We did not try to register the scanned face but there is no obvious reason why our pipeline wouldn't work with our own scans.
+
+### Bonus Task 2
+
+**Worked on by:** Pascal Chang
+
+For this bonus task, we decided to look into Variational Autoencoders as they seem to be a natural extension of PCA (since VAE without non-linearity is equivalent to PCA). Therefore, we implemented our own VAE in Pytorch and trained it, here are the relevant information and results.
+
+#### Architecture
+
+<img width="10%"><img src="results/Bonus-2-architecture.png" width="80%" />
+
+Our model is made of a 3-layer encoder and 3-layer decoder. The encoder takes as input a vectorized list of mesh vertices (always in the same order) and produces a mean and a log-variance, which are then used to randomly sample the latent variable. The latent variable then goes through the decoder until it gets to the input dimension. The output is then reshaped to form the mesh (the face indices are fixed in our work).
+
+The latent variable has a dimension of 16 which is fixed. This means that we will have basically 16 weights to adjust (similar to having 16 eigen faces in PCA).
+
+#### Training
+
+The model is trained with two losses: a **reconstruction loss** that measures how far we are from the original mesh (L1 loss), and the **KL divergence loss** which can be seen as a regularizer. The relative weight between the two losses is a hyperparameter. We initially set it to 1, but the model would always output the same average mesh regardless of the input. By lowering it down to 1e-4, we were able to further minimize the loss and get variations in the outputs.
+
+The final model was trained for 2000 epochs on a training set of 102 faces with common triangulation. 
+
+We used Comet.ml to set up the project and log different metrics, including 3d point clouds, that we were able to visualize and inspect in live during the training.
+
+We also track the loss on the evaluation set (without using it from the gradient descent of course), the losses are shown below. The total loss is a weighted sum of the two losses.
+
+|| Reconstruction loss | KL divergence | Total loss
+|:--:|:--:|:--:|:--:|
+Train|<img src="results/Bonus-2-recloss_train.png" width="100%">|<img src="results/Bonus-2-kldloss_train.png" width="100%">|<img src="results/Bonus-2-totloss_train.png" width="100%">|
+Test|<img src="results/Bonus-2-recloss_eval.png" width="100%">|<img src="results/Bonus-2-kldloss_eval.png" width="100%">|<img src="results/Bonus-2-totloss_eval.png" width="100%">|
+
+
+#### C++ integration
+
+While the training was done in Python using Pytorch, we wanted to be able to visualize the results in the same way we visualize PCA in our GUI. To achieve this, we write a function in Python that could export various data such as model weights, latent variable values etc. in TXT format so that we could easily parse it manually on the C++ side. In fact, Pytorch also has some limited integration with C++, but setting it up would mean more dependencies to install and more overhead in general.
+
+An additional menu was thus added to our GUI with the name `Bonus Task 2`. The interface is very similar to the one for PCA, except that eigen faces are now features (components of the latent variable). 
+
+We also implemented manually the decoder in C++ allowing us to reconstruct the mesh vertices from any latent variable sample directly inside the C++ code. This means the user can have the same freedom to adjust the feature weights as in PCA and see the resulting mesh at interactive rates.
+
+#### Results
+
+Finally, here are some results compared to PCA.
+|Reference (test)| VAE (learning-based) | error ~ 1.98 | PCA | error ~ 0.93|
+|:--:|:--:|:--:|:--:|:--:|
+|<img src="results/Bonus-2-result-test-ref.png" width="100%">|<img src="results/Bonus-2-result-test-vae.png" width="100%">|<img src="results/Bonus-2-result-test-vae_err.png" width="100%">|<img src="results/Bonus-2-result-test-pca.png" width="100%">|<img src="results/Bonus-2-result-test-pca_err.png" width="100%">
+
+|Reference (train)| VAE (learning-based) | error ~ 1.33 | PCA | error ~ 0.96|
+|:--:|:--:|:--:|:--:|:--:|
+|<img src="results/Bonus-2-result-train-ref.png" width="100%">|<img src="results/Bonus-2-result-train-vae.png" width="100%">|<img src="results/Bonus-2-result-train-vae_err.png" width="100%">|<img src="results/Bonus-2-result-train-pca.png" width="100%">|<img src="results/Bonus-2-result-train-pca_err.png" width="100%">
+
+
+ The first row is a mesh from the test set while the second row is one from the training set. We observe that the reconstruction error is lower for meshes in the training set, which is expected. However, even on the training set, PCA still does better.
+
+ The fact that the model performs poorly on unseen meshes may indicate that we are overfitting on the training set. Another observation we made is that the model is often more precise when the face has high variation (i.e. very different from the average face) while for faces with less variations, the model outputs something less accurate (closer to the average face then the one given).
+
+ There are of course many things to improve in this model, one may also try other types of models. However, it has given us interesting results and allowed us to try some machine learning techniques in geometry processing, which we believe is the most important thing.
+
+#### Run the code
+
+If you wish to run the code for this bonus task, please follow the instructions below:
+
++ Using command line, navigate to the subfolder `gp21_ex6_bonus`. 
++ Inside the folder, run `source init_venv.sh`. This will load the necessary modules (if using Leonhard cluster for example), create a virtual environment and install the required packages listed in `requirements.txt`. 
++ If you wish to log the metrics to Comet.ml, fill in the file `.comet.config` with your information (Comet API key, project name and workspace). As a hint, mine looks like this:
+```
+[comet]
+api_key=A***********************j
+project_name="smgp21-ex6-project"
+workspace="pchang"
+```
++ The face data are in `train/` and `eval/`. Each new model you train will be given a unique key (experiment key). To **train a new model**, run:
+```
+python code/main.py --train [--num_epochs 2000 --lambda_kld 1e-4]
+```
++ To **evaluate a model** with experiment key `$EXP_KEY` to see the loss, run:
+```
+python code/main.py --eval --load $EXP_KEY
+```
++ To **export the necessary data** to be used by the C++ app, run:
+```
+python code/main.py --export m f o --load $EXP_KEY
+```
+
+Alternatively `$EXP_KEY` can be replaced by the string `vae` which is the name of the trained model used to generate the results above. For the GUI to work in C++, one must export the **m**odel weights, the **f**eatures (latent variables) and the **o**riginal meshes should also be in the folder (hence the arguments of `--export`). Once the export is complete, a folder `vae_faces` will be created/updated in the root of the bonus project. **Copy this folder to `assignment6/data/`** overwriting existing one if necessary. Now launching the libigl GUI should allow you to see the VAE results with the newly exported outputs.
