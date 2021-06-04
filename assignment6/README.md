@@ -45,7 +45,7 @@ The remeshing function in libigl creates duplicate vertices that we remove using
 **Relevant files:** `LandmarkSelector.h|.cpp`
 
 We used 23 landmarks. Those are the same landmarks as the example landmarks provided by the TA's.
-<img width="20%"><img src="results/landmark-selection.png" alt="drawing" width="60%"/>
+<img width="25%"><img src="results/landmark-selection.png" alt="drawing" width="50%">
 
 To specify a landmark the user enables selection and clicks on the face mesh. A ray is cast in the view direction starting from the mouse position and the intersection with the mesh is calculated.
 
@@ -244,7 +244,7 @@ As additional features, we implemented:
 + `Show average face`: It shows the mean face of the dataset. Since it is no face available in the dataset the face index below will be set to -1.
 + `Face index`: The face index interface allows decreasing/increasing the face index and scroll through each face in the dataset.
 + `Show face`: This shows the currently selected face from the dataset should any other mesh have been displayed in the meantime.
-<img src="results/6-UI-PCA-choose-dataset.gif" width="1000" height="500" />
+<img src="results/6-UI-PCA-choose-dataset.gif" width="100%" />
 
 **To compute linear combinations of Eigen faces:**
 + `#Eigen faces`: The next integer input allows the user to adjust the amount of Eigen faces used to adjust the face offset computed through a linear combination of all Eigen faces weighted with the chosen weight in the range [-1,1]. The weights of each Eigen face can be adjusted through the listed sliders starting at Eigen face 0.
@@ -252,14 +252,14 @@ As additional features, we implemented:
 + `Set weight approximated face`: This set the weights chosen by the above sliders according to the current face index and tries to approximate it as close as possible.
 + `Show face with current weights`: This button lets you display the mean face with a linear combination of Eigen faces weighted according to the weight specified using the sliders for each Eigen face. 
 + `Show error to face index`: This displays a coloured visualization of the distance between the computed offset using a linear combination of the Eigen faces added to the mean face and the face chosen by the face index.
-<img src="results/6-UI-PCA-eigen-faces.gif" width="1000" height="500" />
+<img src="results/6-UI-PCA-eigen-faces.gif" width="100%" />
 
 **To morph between two faces:**
 + `Morph face index`: Specifies the face index of a face from the dataset which we will morph with the linear combination of Eigen faces currently chosen.
 + `Morph rate`: This scalar lets the user linearly interpolate between the two faces chosen for the morph process.
 + `Show morphed face`: This button lets the user display the result of the morph process should any other mesh have been displayed in the meantime.
 + `Save mesh`: This button lets the user save the displayed mesh to the folder `data/pca-results`.
-<img src="results/6-UI-PCA-morph-face.gif" width="1000" height="500" />
+<img src="results/6-UI-PCA-morph-face.gif" width="100%" />
 
 
 ## Bonus Tasks
